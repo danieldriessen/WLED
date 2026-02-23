@@ -379,7 +379,12 @@ extern byte realtimeMode;           // used in getMappedPixelIndex()
 #define FX_MODE_PS1DSONICBOOM          215
 #define FX_MODE_PS1DSPRINGY            216
 #define FX_MODE_PARTICLEGALAXY         217
-#define MODE_COUNT                     218
+
+// Custom bedside lamp effects (Daniel/Gabriela)
+#define FX_MODE_LIGHTBAR_LINKS         218
+#define FX_MODE_LIGHTBAR_RIGHT         219
+
+#define MODE_COUNT                     220
 
 
 #define BLEND_STYLE_FADE            0x00  // universal

@@ -14,6 +14,7 @@
 #include "FX.h"
 #include "fcn_declare.h"
 
+void mode_static(void);
 #define FX_FALLBACK_STATIC { mode_static(); return; }
 
 #if !(defined(WLED_DISABLE_PARTICLESYSTEM2D) && defined(WLED_DISABLE_PARTICLESYSTEM1D))
@@ -126,6 +127,304 @@ static um_data_t* getAudioData() {
   }
   return um_data;
 }
+
+/*
+ * Custom bedside lamp effects: "Lightbar Links" (left) + "Lightbar Right" (right)
+ *
+ * Contract (segment params):
+ * - sx (speed): expand/fill speed (adding pixels)
+ * - ix (intensity): retract/off speed (removing pixels)
+ * - c1/c2: target window bounds (segment-local, scaled 0..255 -> 0..SEGLEN-1)
+ * - c3: early-retract overlap (stored as 0..31 in WLED; mapped to 0..80 LEDs)
+ * - o1/o2/o3: check1/check2/check3
+ *   - o1: desired power (virtual) true=ON, false=OFF with animation
+ *   - o2: OFF realism (speed-up + brightness swell near ground)
+ *   - o3: no-animation/debug (jump immediately to steady/off)
+ *
+ * Orientation:
+ * - Links (left): ground = segment-local len-1
+ * - Right:        ground = segment-local 0
+ */
+namespace {
+  static constexpr uint16_t LIGHTBAR_MAGIC = 0x4C42; // 'LB'
+  static constexpr uint16_t LIGHTBAR_OVERLAP_MAX_LEDS = 80;
+
+  enum LightbarPhase : uint8_t {
+    LB_OFF = 0,
+    LB_ON_FILL,
+    LB_ON_RETRACT,
+    LB_ON_STEADY,
+    LB_SWITCH,
+    LB_OFF_FALL,
+    LB_OFF_SHRINK
+  };
+
+  struct LightbarRuntime {
+    uint16_t magic;
+    uint8_t  phase;
+    bool     lastDesired;
+
+    // Window bounds in "ground coordinates" (0 at ground, increasing away from ground), inclusive.
+    uint16_t gNear;
+    uint16_t gFar;
+    uint16_t gTargetNear;
+    uint16_t gTargetFar;
+
+    // OFF animation helpers
+    uint16_t offStartNear;
+    uint16_t offStartFar;
+
+    uint32_t lastUpdate;
+  };
+
+  static inline uint16_t lightbar_u8ToIndex(uint8_t v, uint16_t len) {
+    if (len <= 1) return 0;
+    return (uint32_t(v) * uint32_t(len - 1)) / 255U;
+  }
+
+  static inline uint16_t lightbar_toGroundCoord(uint16_t localIndex, uint16_t len, bool groundAtStart) {
+    if (len <= 1) return 0;
+    return groundAtStart ? localIndex : (len - 1 - localIndex);
+  }
+
+  static inline uint16_t lightbar_fromGroundCoord(uint16_t g, uint16_t len, bool groundAtStart) {
+    if (len <= 1) return 0;
+    return groundAtStart ? g : (len - 1 - g);
+  }
+
+  static inline uint16_t lightbar_msFromSpeed(uint8_t s) {
+    // higher -> faster -> smaller interval
+    uint16_t ms = 70U - (uint16_t(s) * 60U) / 255U; // 70..10
+    return (ms < MIN_FRAME_DELAY) ? MIN_FRAME_DELAY : ms;
+  }
+
+  static inline uint8_t lightbar_stepFromSpeed(uint8_t s) {
+    // 1..4
+    return 1U + (s >> 6);
+  }
+
+  static void mode_lightbar_common(bool groundAtStart)
+  {
+    if (SEGLEN <= 1) FX_FALLBACK_STATIC;
+
+    if (!SEGMENT.data || SEGMENT.dataSize() != sizeof(LightbarRuntime)) {
+      if (!SEGMENT.allocateData(sizeof(LightbarRuntime))) FX_FALLBACK_STATIC;
+    }
+    auto* st = reinterpret_cast<LightbarRuntime*>(SEGMENT.data);
+
+    if (st->magic != LIGHTBAR_MAGIC) {
+      memset(st, 0, sizeof(*st));
+      st->magic = LIGHTBAR_MAGIC;
+      st->phase = LB_OFF;
+      st->lastDesired = false; // ensures desired=true starts with ON animation
+      st->lastUpdate = strip.now;
+    }
+
+    const bool desiredPower = SEGMENT.check1; // o1
+    const bool offRealism   = SEGMENT.check2; // o2
+    const bool noAnim       = SEGMENT.check3; // o3
+
+    // Map c1/c2 to segment-local indices and convert to ground coordinates.
+    uint16_t a = lightbar_u8ToIndex(SEGMENT.custom1, SEGLEN);
+    uint16_t b = lightbar_u8ToIndex(SEGMENT.custom2, SEGLEN);
+    if (a > b) std::swap(a, b);
+    uint16_t gA = lightbar_toGroundCoord(a, SEGLEN, groundAtStart);
+    uint16_t gB = lightbar_toGroundCoord(b, SEGLEN, groundAtStart);
+    uint16_t gTargetNear = MIN(gA, gB);
+    uint16_t gTargetFar  = MAX(gA, gB);
+
+    // c3 is stored as 0..31 (5-bit); map to 0..80 LEDs overlap threshold.
+    const uint16_t earlyRetract = (SEGMENT.custom3 >= 31)
+      ? LIGHTBAR_OVERLAP_MAX_LEDS
+      : (uint32_t(SEGMENT.custom3) * LIGHTBAR_OVERLAP_MAX_LEDS) / 31U;
+
+    // Handle no-animation/debug mode immediately.
+    if (noAnim) {
+      if (desiredPower) {
+        st->phase = LB_ON_STEADY;
+        st->gNear = gTargetNear;
+        st->gFar  = gTargetFar;
+        st->gTargetNear = gTargetNear;
+        st->gTargetFar  = gTargetFar;
+      } else {
+        SEGMENT.fill(BLACK);
+        SEGMENT.on = false;
+        st->phase = LB_OFF;
+      }
+      st->lastDesired = desiredPower;
+    } else {
+      // Detect desired power transitions.
+      if (desiredPower && !st->lastDesired) {
+        st->phase = LB_ON_FILL;
+        st->gNear = 0;
+        st->gFar  = 0;
+        st->gTargetNear = gTargetNear;
+        st->gTargetFar  = gTargetFar;
+      } else if (!desiredPower && st->lastDesired) {
+        // Start OFF animation from whatever is currently shown.
+        st->phase = LB_OFF_FALL;
+        st->offStartNear = st->gNear;
+        st->offStartFar  = st->gFar;
+      } else if (desiredPower) {
+        // While ON, detect target changes and animate smoothly.
+        if (gTargetNear != st->gTargetNear || gTargetFar != st->gTargetFar) {
+          st->gTargetNear = gTargetNear;
+          st->gTargetFar  = gTargetFar;
+          if (st->phase == LB_ON_STEADY) st->phase = LB_SWITCH;
+          if (st->phase == LB_OFF) st->phase = LB_ON_FILL;
+        }
+      } else {
+        // desiredPower is false and it wasn't a transition; continue OFF animation if in progress.
+        if (st->phase == LB_ON_STEADY || st->phase == LB_SWITCH || st->phase == LB_ON_FILL || st->phase == LB_ON_RETRACT) {
+          st->phase = LB_OFF_FALL;
+          st->offStartNear = st->gNear;
+          st->offStartFar  = st->gFar;
+        }
+      }
+
+      const uint16_t expandMs  = lightbar_msFromSpeed(SEGMENT.speed);
+      const uint16_t retractMs = lightbar_msFromSpeed(SEGMENT.intensity);
+      uint16_t intervalMs = expandMs;
+
+      if (st->phase == LB_ON_RETRACT || st->phase == LB_OFF_FALL || st->phase == LB_OFF_SHRINK) intervalMs = retractMs;
+      if (st->phase == LB_SWITCH) intervalMs = MIN(expandMs, retractMs);
+      if (st->phase == LB_ON_STEADY) intervalMs = MAX(MIN_FRAME_DELAY, 50);
+
+      // Progressive speed-up during OFF fall (optional realism).
+      if (offRealism && st->phase == LB_OFF_FALL && st->offStartNear > 0) {
+        uint16_t progressed = st->offStartNear - MIN(st->offStartNear, st->gNear);
+        uint16_t fasterBy = (progressed * (intervalMs > MIN_FRAME_DELAY ? (intervalMs - MIN_FRAME_DELAY) : 0U)) / st->offStartNear;
+        intervalMs = MAX(MIN_FRAME_DELAY, intervalMs - fasterBy);
+      }
+
+      // State updates only when due (rendering happens every call).
+      if (strip.now - st->lastUpdate >= intervalMs) {
+        st->lastUpdate = strip.now;
+
+        const uint8_t stepExp = lightbar_stepFromSpeed(SEGMENT.speed);
+        uint8_t stepRet = lightbar_stepFromSpeed(SEGMENT.intensity);
+
+        if (offRealism && st->phase == LB_OFF_FALL && st->offStartNear > 0) {
+          // speed-up later in the fall
+          uint16_t progressed = st->offStartNear - MIN(st->offStartNear, st->gNear);
+          stepRet = MIN(8, uint8_t(stepRet + (progressed * 4U) / st->offStartNear));
+        }
+
+        switch (st->phase) {
+          case LB_ON_FILL:
+            st->gFar = MIN(st->gFar + stepExp, st->gTargetFar);
+            if (st->gFar >= st->gTargetFar) {
+              st->phase = (st->gTargetNear == 0) ? LB_ON_STEADY : LB_ON_RETRACT;
+            }
+            break;
+
+          case LB_ON_RETRACT:
+            st->gNear = MIN(st->gNear + stepRet, st->gTargetNear);
+            if (st->gNear >= st->gTargetNear) st->phase = LB_ON_STEADY;
+            break;
+
+          case LB_ON_STEADY:
+            st->gNear = st->gTargetNear;
+            st->gFar  = st->gTargetFar;
+            break;
+
+          case LB_SWITCH: {
+            // Expand/shrink from far end, retract/expand from ground end.
+            if (st->gFar < st->gTargetFar) {
+              st->gFar = MIN(st->gFar + stepExp, st->gTargetFar);
+            } else if (st->gFar > st->gTargetFar) {
+              st->gFar = (st->gFar > stepRet) ? (st->gFar - stepRet) : 0;
+              if (st->gFar < st->gTargetFar) st->gFar = st->gTargetFar;
+            }
+
+            if (st->gNear < st->gTargetNear) {
+              // Early overlap: if we are expanding gFar, start retracting gNear once close to target.
+              const bool needExpandFar = (st->gFar < st->gTargetFar);
+              const uint16_t overlapStart = (st->gTargetFar > earlyRetract) ? (st->gTargetFar - earlyRetract) : 0;
+              if (!needExpandFar || st->gFar >= overlapStart) {
+                st->gNear = MIN(st->gNear + stepRet, st->gTargetNear);
+              }
+            } else if (st->gNear > st->gTargetNear) {
+              // Expand toward ground (adding pixels near ground)
+              st->gNear = (st->gNear > stepExp) ? (st->gNear - stepExp) : 0;
+              if (st->gNear < st->gTargetNear) st->gNear = st->gTargetNear;
+            }
+
+            if (st->gNear > st->gFar) st->gNear = st->gFar;
+            if (st->gNear == st->gTargetNear && st->gFar == st->gTargetFar) st->phase = LB_ON_STEADY;
+            break;
+          }
+
+          case LB_OFF_FALL:
+            if (st->gNear > 0) {
+              uint16_t delta = MIN(stepRet, st->gNear);
+              st->gNear -= delta;
+              st->gFar  = (st->gFar > delta) ? (st->gFar - delta) : 0;
+            }
+            if (st->gNear == 0) {
+              st->phase = LB_OFF_SHRINK;
+              st->offStartFar = st->gFar;
+            }
+            break;
+
+          case LB_OFF_SHRINK:
+            if (st->gFar > 0) st->gFar = (st->gFar > stepRet) ? (st->gFar - stepRet) : 0;
+            if (st->gFar == 0) {
+              SEGMENT.fill(BLACK);
+              SEGMENT.on = false;
+              st->phase = LB_OFF;
+            }
+            break;
+
+          case LB_OFF:
+          default:
+            break;
+        }
+      }
+
+      st->lastDesired = desiredPower;
+    }
+
+    // Render the current window for this segment.
+    SEGMENT.fill(BLACK);
+
+    if (SEGMENT.on && st->phase != LB_OFF) {
+      uint32_t col = SEGCOLOR(0);
+      uint8_t fade = 255;
+      uint8_t swellBlend = 0;
+
+      // Brightness swell near ground during OFF fall (optional realism).
+      if (offRealism && st->phase == LB_OFF_FALL) {
+        const uint16_t swellDist = 10;
+        if (st->gNear <= swellDist) {
+          uint8_t amt = uint8_t((swellDist - st->gNear) * 12U); // up to ~120
+          swellBlend = MIN(120, amt);
+        }
+      }
+
+      // Fade out during shrink-to-ground.
+      if (st->phase == LB_OFF_SHRINK && st->offStartFar > 0) {
+        fade = uint8_t((uint32_t(st->gFar) * 255U) / uint32_t(st->offStartFar));
+      }
+
+      if (swellBlend) col = color_blend(col, ULTRAWHITE, swellBlend);
+      if (fade < 255) col = color_fade(col, fade, true);
+
+      for (uint16_t g = st->gNear; g <= st->gFar && g < SEGLEN; g++) {
+        uint16_t i = lightbar_fromGroundCoord(g, SEGLEN, groundAtStart);
+        SEGMENT.setPixelColor(i, col);
+      }
+    }
+  }
+} // namespace
+
+void mode_lightbar_links(void) { mode_lightbar_common(false); } // ground at segment end
+static const char _data_FX_MODE_LIGHTBAR_LINKS[] PROGMEM =
+  "Lightbar Links@Expand,Retract,Target A,Target B,Overlap (0-80);Desired power,Realistic OFF,No anim;!;1;sx=90,ix=120,c1=128,c2=128,c3=14,o1=1,o2=1,o3=0";
+
+void mode_lightbar_right(void) { mode_lightbar_common(true); } // ground at segment start
+static const char _data_FX_MODE_LIGHTBAR_RIGHT[] PROGMEM =
+  "Lightbar Right@Expand,Retract,Target A,Target B,Overlap (0-80);Desired power,Realistic OFF,No anim;!;1;sx=90,ix=120,c1=128,c2=128,c3=14,o1=1,o2=1,o3=0";
 
 
 // effect functions
@@ -10994,5 +11293,9 @@ addEffect(FX_MODE_PS1DSONICSTREAM, &mode_particle1DsonicStream, _data_FX_MODE_PS
 addEffect(FX_MODE_PS1DSONICBOOM, &mode_particle1DsonicBoom, _data_FX_MODE_PS_SONICBOOM);
 addEffect(FX_MODE_PS1DSPRINGY, &mode_particleSpringy, _data_FX_MODE_PS_SPRINGY);
 #endif // WLED_DISABLE_PARTICLESYSTEM1D
+
+  // --- Custom bedside lamp effects ---
+  addEffect(FX_MODE_LIGHTBAR_LINKS, &mode_lightbar_links, _data_FX_MODE_LIGHTBAR_LINKS);
+  addEffect(FX_MODE_LIGHTBAR_RIGHT, &mode_lightbar_right, _data_FX_MODE_LIGHTBAR_RIGHT);
 
 }
