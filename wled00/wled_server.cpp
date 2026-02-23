@@ -43,6 +43,7 @@ static const char s_expires[]        PROGMEM = "Expires";
 static const char _common_js[]       PROGMEM = "/common.js";
 static const char _iro_js[]          PROGMEM = "/iro.js";
 static const char _omggif_js[]       PROGMEM = "/omggif.js";
+static const char _remote_control[]  PROGMEM = "/remote-control";
 
 //Is this an IP?
 static bool isIp(const String &str) {
@@ -612,6 +613,10 @@ void initServer()
     } else {
       serveSettings(request);
     }
+  });
+
+  server.on(_remote_control, HTTP_GET, [](AsyncWebServerRequest *request) {
+    handleStaticContent(request, FPSTR(_remote_control), 200, FPSTR(CONTENT_TYPE_HTML), PAGE_remote_control, PAGE_remote_control_length);
   });
 
 #ifndef WLED_DISABLE_2D

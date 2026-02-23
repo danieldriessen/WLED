@@ -465,6 +465,12 @@ const char PAGE_dmxmap[] PROGMEM = R"=====()=====";
       filter: "html-minify",
     },
     {
+      file: "remote-control.htm",
+      name: "PAGE_remote_control",
+      method: "gzip",
+      filter: "html-minify",
+    },
+    {
       file: "404.htm",
       name: "PAGE_404",
       method: "gzip",
