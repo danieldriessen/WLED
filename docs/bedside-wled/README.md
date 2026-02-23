@@ -184,6 +184,15 @@ This fork also includes a mobile-first remote page served directly from the devi
 
 It provides a Daniel/Gabriela selector and sends the correct per-segment `/json/state` commands (including OFF-with-animation via `o1=false`).
 
+### iOS “Not Secure” note (home screen web app)
+
+If you add `http://.../remote-control` to the iOS home screen, iOS may still warn that it is not HTTPS.
+That warning cannot be removed by changing the WLED page alone; it requires serving the page over **HTTPS with a certificate iOS trusts**.
+
+Practical solution: put an HTTPS reverse proxy (Apache/Nginx/Caddy/Nginx Proxy Manager) in front of WLED and access:
+
+- `https://<your-hostname>/remote-control`
+
 ### What the remote UI controls do
 
 - **Daniel / Gabriela selector**: chooses which segment is being controlled:
