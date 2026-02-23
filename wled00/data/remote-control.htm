@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0f18">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Bedside Remote">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Bedside Remote</title>
+  <style>
+    :root{
+      --bg0:#070a10;
+      --bg1:#0b0f18;
+      --card:rgba(255,255,255,.06);
+      --card2:rgba(255,255,255,.085);
+      --text:#e7eefc;
+      --muted:rgba(231,238,252,.65);
+      --line:rgba(255,255,255,.08);
+      --accent:#5aa8ff;
+      --accent2:#7cf0c9;
+      --danger:#ff5a7b;
+      --warn:#ffcc66;
+      --shadow: 0 12px 40px rgba(0,0,0,.45);
+      --r:18px;
+      --tap:54px;
+      --font: ui-sans-serif, -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:var(--font);
+      color:var(--text);
+      background:
+        radial-gradient(1200px 700px at 20% -10%, rgba(90,168,255,.18), transparent 55%),
+        radial-gradient(900px 600px at 90% 10%, rgba(124,240,201,.10), transparent 60%),
+        radial-gradient(900px 900px at 40% 110%, rgba(255,90,123,.08), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px;
+    }
+    .wrap{max-width:520px;margin:0 auto;padding:18px 0 26px}
+    header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+    .title{display:flex;flex-direction:column;gap:4px}
+    .title h1{margin:0;font-size:20px;letter-spacing:.2px}
+    .title .sub{font-size:13px;color:var(--muted);line-height:1.35}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:10px 12px;border-radius:999px;
+      background:rgba(0,0,0,.22);border:1px solid var(--line);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+      font-size:12px;color:var(--muted);white-space:nowrap
+    }
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--danger)}
+    .dot.ok{background:var(--accent2)}
+    .dot.warn{background:var(--warn)}
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--r);
+      box-shadow:var(--shadow);
+      padding:14px;
+      margin:12px 0;
+      backdrop-filter: blur(10px);
+    }
+    .seg-toggle{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .seg-btn{
+      height:var(--tap);
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.05);
+      color:var(--text);
+      font-weight:600;
+      letter-spacing:.2px;
+      display:flex;align-items:center;justify-content:center;
+      position:relative;
+      transition:transform .06s ease, background .2s ease, border-color .2s ease;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .seg-btn:active{transform:scale(.99)}
+    .seg-btn.sel{
+      background:linear-gradient(180deg, rgba(90,168,255,.28), rgba(90,168,255,.12));
+      border-color:rgba(90,168,255,.55);
+      box-shadow: 0 10px 24px rgba(90,168,255,.16);
+    }
+
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    .btn{
+      height:var(--tap);
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.05);
+      color:var(--text);
+      font-weight:700;
+      letter-spacing:.15px;
+      display:flex;align-items:center;justify-content:center;
+      gap:10px;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active{transform:scale(.99)}
+    .btn.primary{
+      background:linear-gradient(180deg, rgba(124,240,201,.26), rgba(124,240,201,.10));
+      border-color:rgba(124,240,201,.55);
+    }
+    .btn.danger{
+      background:linear-gradient(180deg, rgba(255,90,123,.30), rgba(255,90,123,.10));
+      border-color:rgba(255,90,123,.55);
+    }
+    .btn.ghost{background:rgba(0,0,0,.18)}
+    .btn.small{height:44px;border-radius:14px;font-weight:700}
+    .btn.sel{border-color:rgba(90,168,255,.6);background:rgba(90,168,255,.16)}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0 6px}
+    .row .label{font-weight:700}
+    .row .hint{font-size:12px;color:var(--muted)}
+    .statusline{font-size:13px;color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .statusline b{color:var(--text)}
+
+    .bri{
+      display:grid;
+      grid-template-columns: var(--tap) 1fr var(--tap);
+      gap:10px;
+      align-items:center;
+      margin-top:10px;
+    }
+    input[type="range"]{
+      width:100%;
+      accent-color: var(--accent);
+    }
+    .chip{
+      display:inline-flex;align-items:center;justify-content:center;
+      min-width:46px;height:32px;padding:0 10px;border-radius:999px;
+      background:rgba(0,0,0,.22);border:1px solid var(--line);color:var(--muted);
+      font-size:12px;font-weight:700;
+    }
+
+    details{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+    summary{
+      cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;
+      font-weight:800;letter-spacing:.2px;
+      padding:10px 0;
+    }
+    summary::-webkit-details-marker{display:none}
+    .adv-grid{display:grid;grid-template-columns:1fr;gap:10px}
+    .field{
+      background:rgba(0,0,0,.16);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:12px;
+    }
+    .field .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .field .top .k{font-weight:800}
+    .field .top .v{font-size:12px;color:var(--muted)}
+    .toggle{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+    }
+    .toggle input{width:22px;height:22px}
+    .footer{margin-top:12px;font-size:12px;color:var(--muted);line-height:1.4}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <h1>Bedside Remote</h1>
+        <div class="sub">Smart remote for your two virtual bedside lamps (on-device animations).</div>
+      </div>
+      <div class="pill" id="connPill" aria-live="polite">
+        <span class="dot" id="connDot"></span>
+        <span id="connText">Connecting…</span>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="seg-toggle" role="tablist" aria-label="Select bedside">
+        <div class="seg-btn" id="btnDaniel" role="tab" tabindex="0">Daniel</div>
+        <div class="seg-btn" id="btnGabi" role="tab" tabindex="0">Gabriela</div>
+      </div>
+      <div style="height:10px"></div>
+      <div class="statusline" id="statusLine">
+        <span>Selected: <b id="selName">—</b></span>
+        <span class="chip" id="lampState">—</span>
+        <span class="chip mono" id="segMeta">seg —</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="grid2">
+        <div class="btn primary" id="btnOn">ON</div>
+        <div class="btn danger" id="btnOff">OFF</div>
+      </div>
+
+      <div class="row">
+        <div class="label">Brightness</div>
+        <div class="hint"><span class="mono" id="briVal">—</span></div>
+      </div>
+      <div class="bri">
+        <div class="btn ghost" id="btnBriDown" aria-label="Brightness down">−</div>
+        <input type="range" min="1" max="255" value="128" id="briSlider">
+        <div class="btn ghost" id="btnBriUp" aria-label="Brightness up">+</div>
+      </div>
+
+      <div class="row">
+        <div class="label">Size</div>
+        <div class="hint">More/less LEDs (toward/away from ground)</div>
+      </div>
+      <div class="grid2">
+        <div class="btn" id="btnLess">Less LEDs</div>
+        <div class="btn" id="btnMore">More LEDs</div>
+      </div>
+
+      <div class="row">
+        <div class="label">Mode</div>
+        <div class="hint">Quick target windows</div>
+      </div>
+      <div class="grid2">
+        <div class="btn" id="btnSide">Side</div>
+        <div class="btn" id="btnTop">Top</div>
+      </div>
+
+      <div class="row">
+        <div class="label">White</div>
+        <div class="hint">Warm/cool</div>
+      </div>
+      <div class="grid2">
+        <div class="btn" id="btnWarm">Warm</div>
+        <div class="btn" id="btnCool">Cool</div>
+      </div>
+
+      <div class="row">
+        <div class="label">Color</div>
+        <div class="hint">Optional RGB (keeps effect)</div>
+      </div>
+      <div class="grid2">
+        <input class="btn small" id="colorPick" type="color" value="#ffa000" aria-label="Pick color">
+        <div class="btn small" id="btnColorApply">Apply</div>
+      </div>
+
+      <details>
+        <summary>
+          Advanced
+          <span class="chip">tuning</span>
+        </summary>
+
+        <div class="adv-grid">
+          <div class="field">
+            <div class="top">
+              <div class="k">Expand speed</div>
+              <div class="v mono" id="sxVal">sx —</div>
+            </div>
+            <input type="range" min="0" max="255" value="90" id="sxSlider">
+          </div>
+
+          <div class="field">
+            <div class="top">
+              <div class="k">Retract speed</div>
+              <div class="v mono" id="ixVal">ix —</div>
+            </div>
+            <input type="range" min="0" max="255" value="120" id="ixSlider">
+          </div>
+
+          <div class="field">
+            <div class="top">
+              <div class="k">Overlap</div>
+              <div class="v mono" id="c3Val">c3 —</div>
+            </div>
+            <input type="range" min="0" max="31" value="14" id="c3Slider">
+            <div class="footer">In WLED, <span class="mono">c3</span> is 0–31. The effect maps it to ~0–80 LEDs overlap.</div>
+          </div>
+
+          <div class="field">
+            <div class="toggle">
+              <div>
+                <div style="font-weight:800">Realistic OFF</div>
+                <div class="hint">Speed-up + small brightness swell near ground</div>
+              </div>
+              <input type="checkbox" id="o2Chk" checked>
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="toggle">
+              <div>
+                <div style="font-weight:800">No animation</div>
+                <div class="hint">Instant jump to steady ON/OFF (debug)</div>
+              </div>
+              <input type="checkbox" id="o3Chk">
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="toggle">
+              <div>
+                <div style="font-weight:800">Tight mode</div>
+                <div class="hint">Use “min” windows for Top/Side buttons</div>
+              </div>
+              <input type="checkbox" id="tightChk">
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="top">
+              <div class="k">Current target</div>
+              <div class="v mono" id="c12Val">c1/c2 —</div>
+            </div>
+            <div class="footer">This page drives <span class="mono">/json/state</span> for the selected segment and uses <span class="mono">o1</span> for OFF-with-animation.</div>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <script>
+  (() => {
+    const $ = (id) => document.getElementById(id);
+
+    // Device contract (current setup on your device)
+    const DEVICE = {
+      ipHint: location.host || "192.168.2.80",
+      segments: {
+        daniel: { id: 0, name: "Daniel",   fx: 219, len: 131, groundAtStart: true  },
+        gabi:   { id: 1, name: "Gabriela", fx: 218, len: 131, groundAtStart: false },
+      },
+      // Anchor ranges (segment-local indices, inclusive)
+      // Right (Daniel): local == global for 0..130
+      // Left (Gabriela): derived by mirror rule then converted to segment-local (global-131)
+      anchors: {
+        daniel: {
+          topMin:  [108,116],
+          topMax:  [78,130],
+          sideMin: [23,31],
+          sideMax: [15,77],
+        },
+        gabi: {
+          topMin:  [14,22],
+          topMax:  [0,52],
+          sideMin: [99,107],
+          sideMax: [53,115],
+        }
+      }
+    };
+
+    const ui = {
+      connPill: $("connPill"), connDot: $("connDot"), connText: $("connText"),
+      btnDaniel: $("btnDaniel"), btnGabi: $("btnGabi"),
+      selName: $("selName"), lampState: $("lampState"), segMeta: $("segMeta"),
+      btnOn: $("btnOn"), btnOff: $("btnOff"),
+      btnBriDown: $("btnBriDown"), btnBriUp: $("btnBriUp"), briSlider: $("briSlider"), briVal: $("briVal"),
+      btnMore: $("btnMore"), btnLess: $("btnLess"),
+      btnSide: $("btnSide"), btnTop: $("btnTop"),
+      btnWarm: $("btnWarm"), btnCool: $("btnCool"),
+      colorPick: $("colorPick"), btnColorApply: $("btnColorApply"),
+      sxSlider: $("sxSlider"), ixSlider: $("ixSlider"), c3Slider: $("c3Slider"),
+      sxVal: $("sxVal"), ixVal: $("ixVal"), c3Val: $("c3Val"),
+      o2Chk: $("o2Chk"), o3Chk: $("o3Chk"), tightChk: $("tightChk"),
+      c12Val: $("c12Val"),
+    };
+
+    const LS_KEY = "bedsideRemote.selected";
+    let selectedKey = localStorage.getItem(LS_KEY) || "daniel";
+    let lastState = null;
+    let pollTimer = null;
+    let busy = false;
+
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const encIdx = (idx, len) => {
+      if (len <= 1) return 0;
+      return Math.round(idx * 255 / (len - 1));
+    };
+    const decIdx = (u8, len) => {
+      if (len <= 1) return 0;
+      return Math.round(u8 * (len - 1) / 255);
+    };
+    const toG = (localIdx, len, groundAtStart) => groundAtStart ? localIdx : (len - 1 - localIdx);
+    const fromG = (g, len, groundAtStart) => groundAtStart ? g : (len - 1 - g);
+
+    function selected() {
+      return DEVICE.segments[selectedKey];
+    }
+    function setSelected(key) {
+      selectedKey = key;
+      localStorage.setItem(LS_KEY, key);
+      ui.btnDaniel.classList.toggle("sel", key === "daniel");
+      ui.btnGabi.classList.toggle("sel", key === "gabi");
+      ui.selName.textContent = DEVICE.segments[key].name;
+      ui.segMeta.textContent = `seg ${DEVICE.segments[key].id} • fx ${DEVICE.segments[key].fx}`;
+      renderFromState(lastState);
+    }
+
+    async function postState(segObj) {
+      const payload = { seg: [segObj] };
+      const res = await fetch("/json/state", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json().catch(() => ({}));
+    }
+
+    function conn(ok, txt, level="ok") {
+      ui.connDot.classList.toggle("ok", ok);
+      ui.connDot.classList.toggle("warn", level==="warn" && ok);
+      ui.connText.textContent = txt;
+    }
+
+    function getSegFromState(state, segId) {
+      if (!state || !state.seg) return null;
+      return state.seg.find(s => s.id === segId) || null;
+    }
+
+    function renderFromState(state) {
+      if (!state) return;
+      const seg = getSegFromState(state, selected().id);
+      if (!seg) return;
+
+      ui.briSlider.value = seg.bri ?? 128;
+      ui.briVal.textContent = `bri ${seg.bri ?? "—"}`;
+
+      ui.sxSlider.value = seg.sx ?? ui.sxSlider.value;
+      ui.ixSlider.value = seg.ix ?? ui.ixSlider.value;
+      ui.c3Slider.value = seg.c3 ?? ui.c3Slider.value;
+      ui.sxVal.textContent = `sx ${ui.sxSlider.value}`;
+      ui.ixVal.textContent = `ix ${ui.ixSlider.value}`;
+      ui.c3Val.textContent = `c3 ${ui.c3Slider.value}`;
+      ui.c12Val.textContent = `c1 ${seg.c1 ?? "—"} • c2 ${seg.c2 ?? "—"}`;
+
+      ui.o2Chk.checked = !!seg.o2;
+      ui.o3Chk.checked = !!seg.o3;
+
+      const desired = !!seg.o1;
+      const on = !!seg.on;
+      let label = "OFF";
+      if (on && desired) label = "ON";
+      else if (on && !desired) label = "OFF (anim)";
+      ui.lampState.textContent = label;
+    }
+
+    async function pollOnce() {
+      try {
+        const res = await fetch("/json/state", { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        lastState = await res.json();
+        conn(true, "Connected", "ok");
+        renderFromState(lastState);
+      } catch (e) {
+        conn(false, "Offline");
+      }
+    }
+
+    function startPolling() {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(pollOnce, 900);
+      pollOnce();
+    }
+
+    async function safeAction(fn) {
+      if (busy) return;
+      busy = true;
+      try { await fn(); }
+      finally { busy = false; }
+      await pollOnce();
+    }
+
+    function currentTuning() {
+      return {
+        sx: parseInt(ui.sxSlider.value, 10),
+        ix: parseInt(ui.ixSlider.value, 10),
+        c3: parseInt(ui.c3Slider.value, 10),
+        o2: !!ui.o2Chk.checked,
+        o3: !!ui.o3Chk.checked,
+      };
+    }
+
+    function currentC12FromStateOrDefault() {
+      const seg = getSegFromState(lastState, selected().id);
+      if (seg && typeof seg.c1 === "number" && typeof seg.c2 === "number") return { c1: seg.c1, c2: seg.c2 };
+      return { c1: 128, c2: 128 };
+    }
+
+    async function turnOn() {
+      const s = selected();
+      const { c1, c2 } = currentC12FromStateOrDefault();
+      const t = currentTuning();
+      await postState({
+        id: s.id,
+        on: true,
+        fx: s.fx,
+        o1: true,
+        ...t,
+        c1, c2,
+      });
+    }
+
+    async function turnOff() {
+      const s = selected();
+      const t = currentTuning();
+      await postState({
+        id: s.id,
+        on: true,
+        o1: false,
+        ...t,
+      });
+    }
+
+    async function setBrightnessAbs(bri) {
+      const s = selected();
+      await postState({ id: s.id, bri: clamp(bri, 1, 255) });
+    }
+
+    async function adjustBrightness(delta) {
+      const seg = getSegFromState(lastState, selected().id);
+      const cur = seg?.bri ?? parseInt(ui.briSlider.value, 10) ?? 128;
+      await setBrightnessAbs(cur + delta);
+    }
+
+    async function setAnchors(mode) {
+      const s = selected();
+      const a = DEVICE.anchors[selectedKey];
+      const tight = !!ui.tightChk.checked;
+      const range = (mode === "top")
+        ? (tight ? a.topMin : a.topMax)
+        : (tight ? a.sideMin : a.sideMax);
+      const c1 = encIdx(range[0], s.len);
+      const c2 = encIdx(range[1], s.len);
+      const t = currentTuning();
+      await postState({ id: s.id, on: true, fx: s.fx, o1: true, ...t, c1, c2 });
+      ui.btnTop.classList.toggle("sel", mode === "top");
+      ui.btnSide.classList.toggle("sel", mode === "side");
+    }
+
+    async function adjustSize(deltaFar) {
+      const s = selected();
+      const seg = getSegFromState(lastState, s.id);
+      const c1u = seg?.c1 ?? 128;
+      const c2u = seg?.c2 ?? 128;
+      const a = decIdx(c1u, s.len);
+      const b = decIdx(c2u, s.len);
+      const lo = Math.min(a, b);
+      const hi = Math.max(a, b);
+      let gNear = Math.min(toG(lo, s.len, s.groundAtStart), toG(hi, s.len, s.groundAtStart));
+      let gFar  = Math.max(toG(lo, s.len, s.groundAtStart), toG(hi, s.len, s.groundAtStart));
+
+      // Grow/shrink away from ground by adjusting gFar
+      gFar = clamp(gFar + deltaFar, gNear, s.len - 1);
+
+      const newLo = fromG(gNear, s.len, s.groundAtStart);
+      const newHi = fromG(gFar,  s.len, s.groundAtStart);
+      const c1 = encIdx(Math.min(newLo, newHi), s.len);
+      const c2 = encIdx(Math.max(newLo, newHi), s.len);
+      const t = currentTuning();
+      await postState({ id: s.id, on: true, fx: s.fx, o1: true, ...t, c1, c2 });
+    }
+
+    async function setColorRGB(rgbHex) {
+      const s = selected();
+      const hex = rgbHex.replace("#", "");
+      if (hex.length !== 6) return;
+      const r = parseInt(hex.slice(0,2), 16);
+      const g = parseInt(hex.slice(2,4), 16);
+      const b = parseInt(hex.slice(4,6), 16);
+      await postState({ id: s.id, col: [[r,g,b,0]] });
+    }
+
+    async function setWarmCool(which) {
+      // tuned to "warm-ish" and "cool-ish" without requiring CCT channel
+      const warm = [255,160,0,0];
+      const cool = [170,215,255,0];
+      await postState({ id: selected().id, col: [which === "warm" ? warm : cool] });
+      ui.btnWarm.classList.toggle("sel", which === "warm");
+      ui.btnCool.classList.toggle("sel", which === "cool");
+    }
+
+    // Bind UI
+    ui.btnDaniel.addEventListener("click", () => setSelected("daniel"));
+    ui.btnGabi.addEventListener("click", () => setSelected("gabi"));
+    ui.btnDaniel.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") setSelected("daniel"); });
+    ui.btnGabi.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") setSelected("gabi"); });
+
+    ui.btnOn.addEventListener("click", () => safeAction(turnOn));
+    ui.btnOff.addEventListener("click", () => safeAction(turnOff));
+
+    ui.btnBriDown.addEventListener("click", () => safeAction(() => adjustBrightness(-15)));
+    ui.btnBriUp.addEventListener("click", () => safeAction(() => adjustBrightness(+15)));
+    ui.briSlider.addEventListener("input", () => { ui.briVal.textContent = `bri ${ui.briSlider.value}`; });
+    ui.briSlider.addEventListener("change", () => safeAction(() => setBrightnessAbs(parseInt(ui.briSlider.value, 10))));
+
+    ui.btnMore.addEventListener("click", () => safeAction(() => adjustSize(+4)));
+    ui.btnLess.addEventListener("click", () => safeAction(() => adjustSize(-4)));
+
+    ui.btnTop.addEventListener("click", () => safeAction(() => setAnchors("top")));
+    ui.btnSide.addEventListener("click", () => safeAction(() => setAnchors("side")));
+
+    ui.btnWarm.addEventListener("click", () => safeAction(() => setWarmCool("warm")));
+    ui.btnCool.addEventListener("click", () => safeAction(() => setWarmCool("cool")));
+
+    ui.btnColorApply.addEventListener("click", () => safeAction(() => setColorRGB(ui.colorPick.value)));
+
+    const updAdv = () => {
+      ui.sxVal.textContent = `sx ${ui.sxSlider.value}`;
+      ui.ixVal.textContent = `ix ${ui.ixSlider.value}`;
+      ui.c3Val.textContent = `c3 ${ui.c3Slider.value}`;
+    };
+    ui.sxSlider.addEventListener("input", updAdv);
+    ui.ixSlider.addEventListener("input", updAdv);
+    ui.c3Slider.addEventListener("input", updAdv);
+
+    // Start
+    setSelected(selectedKey in DEVICE.segments ? selectedKey : "daniel");
+    startPolling();
+  })();
+  </script>
+</body>
+</html>
+
