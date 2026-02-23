@@ -193,6 +193,17 @@ Practical solution: put an HTTPS reverse proxy (Apache/Nginx/Caddy/Nginx Proxy M
 
 - `https://<your-hostname>/remote-control`
 
+#### Practical LAN setup (ioBroker Apache on high port)
+
+One working approach is to run an Apache reverse proxy on your ioBroker host and expose WLED over HTTPS on a **high port** (example: `9443`) so you do not need ports 80/443.
+
+Example URLs (after proxy setup):
+
+- Remote UI: `https://192.168.0.50:9443/remote-control`
+- JSON API: `https://192.168.0.50:9443/json/state`
+
+If you use a local/self-signed CA, iOS will only stop warning after you install and trust that CA certificate on the phone.
+
 ### What the remote UI controls do
 
 - **Daniel / Gabriela selector**: chooses which segment is being controlled:
