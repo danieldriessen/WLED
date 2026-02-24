@@ -515,7 +515,7 @@
     };
 
     // Canonical "More/Less LEDs" behavior:
-    // step through a fixed ordered list of inclusive ranges per side+mode (with wrap-around).
+    // step through a fixed ordered list of inclusive ranges per side+mode (clamped at ends; no wrap-around).
     function genPhaseSym(a0, b0, steps) {
       const out = [];
       for (let k = 0; k < steps; k++) out.push([a0 - k, b0 + k]);
