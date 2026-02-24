@@ -695,6 +695,7 @@
     let persistTimer = null;
     let deviceStoreTimer = null;
     let suppressColorFromStateUntil = 0;
+    let suppressModeInferUntil = 0;
 
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
     const briToPct = (bri) => `${Math.round(clamp(bri ?? 0, 0, 255) * 100 / 255)} %`;
@@ -996,6 +997,60 @@
       return best;
     }
 
+    function bestStepForEncoded(sideKey, mode, c1, c2) {
+      const cfg = DEVICE.segments[sideKey];
+      if (!cfg) return null;
+      const len = cfg.len ?? 1;
+      const list = STEP_LISTS?.[sideKey]?.[mode] || [];
+      if (!list.length) return null;
+      const cLo = Math.min(c1, c2);
+      const cHi = Math.max(c1, c2);
+      let best = { idx: 0, score: Infinity };
+      for (let i = 0; i < list.length; i++) {
+        const [lo, hi] = list[i];
+        const e1 = encIdx(lo, len);
+        const e2 = encIdx(hi, len);
+        const eLo = Math.min(e1, e2);
+        const eHi = Math.max(e1, e2);
+        const score = Math.abs(eLo - cLo) + Math.abs(eHi - cHi);
+        if (score < best.score) best = { idx: i, score };
+        if (score === 0) break;
+      }
+      return best;
+    }
+
+    function normalizeSavedWindowsForSide(sideKey) {
+      // Protect against accidental swap/corruption of saved windows (e.g. "side" storing a "top" range).
+      const ms = readMem(sideKey, "side");
+      const mt = readMem(sideKey, "top");
+      const ss = (ms && typeof ms.c1 === "number" && typeof ms.c2 === "number") ? (bestStepForEncoded(sideKey, "side", ms.c1, ms.c2)?.score ?? Infinity) : Infinity;
+      const st = (ms && typeof ms.c1 === "number" && typeof ms.c2 === "number") ? (bestStepForEncoded(sideKey, "top",  ms.c1, ms.c2)?.score ?? Infinity) : Infinity;
+      const ts = (mt && typeof mt.c1 === "number" && typeof mt.c2 === "number") ? (bestStepForEncoded(sideKey, "side", mt.c1, mt.c2)?.score ?? Infinity) : Infinity;
+      const tt = (mt && typeof mt.c1 === "number" && typeof mt.c2 === "number") ? (bestStepForEncoded(sideKey, "top",  mt.c1, mt.c2)?.score ?? Infinity) : Infinity;
+
+      // If side better matches top AND top better matches side (and both are close), swap them.
+      if (st < ss && ts < tt && st <= 2 && ts <= 2) {
+        writeMem(sideKey, "side", mt);
+        writeMem(sideKey, "top",  ms);
+        const is = readStepIndex(sideKey, "side");
+        const it = readStepIndex(sideKey, "top");
+        if (is != null || it != null) {
+          if (it != null) writeStepIndex(sideKey, "side", it);
+          if (is != null) writeStepIndex(sideKey, "top",  is);
+        }
+      } else {
+        // Keep step indices aligned with the closest matching step, if we can.
+        if (ms && ss <= 2) {
+          const b = bestStepForEncoded(sideKey, "side", ms.c1, ms.c2);
+          if (b) writeStepIndex(sideKey, "side", b.idx);
+        }
+        if (mt && tt <= 2) {
+          const b = bestStepForEncoded(sideKey, "top", mt.c1, mt.c2);
+          if (b) writeStepIndex(sideKey, "top", b.idx);
+        }
+      }
+    }
+
     function isFullVariant(sideKey) {
       return (modeVariantBySide[sideKey] || "saved") === "full";
     }
@@ -1053,11 +1108,13 @@
 
       // If the current c1/c2 matches one of our canonical step lists, keep Mode UI in sync.
       // This prevents "Side" / "Top" from getting out of sync when state changes outside this remote.
-      const inf = inferModeFromSeg(selectedKey, segSel);
-      if (inf && inf.mode && inf.mode !== modeKeyForSide(selectedKey)) {
-        setModeForSide(selectedKey, inf.mode);
-        writeStepIndex(selectedKey, inf.mode, inf.idx);
-        reflectModeUIForSelected();
+      if (Date.now() >= suppressModeInferUntil) {
+        const inf = inferModeFromSeg(selectedKey, segSel);
+        if (inf && inf.mode && inf.mode !== modeKeyForSide(selectedKey)) {
+          setModeForSide(selectedKey, inf.mode);
+          writeStepIndex(selectedKey, inf.mode, inf.idx);
+          reflectModeUIForSelected();
+        }
       }
 
       const now = Date.now();
@@ -1399,6 +1456,7 @@
       await postState({ id: s.id, on: true, fx: s.fx, o1: true, ...t, c1, c2 });
       setModeForSide(selectedKey, mode);
       setModeVariantForSide(selectedKey, "saved");
+      suppressModeInferUntil = Date.now() + 2000;
       reflectModeUIForSelected();
     }
 
@@ -1412,6 +1470,7 @@
       await postState({ id: s.id, on: true, fx: s.fx, o1: true, ...t, c1, c2 });
       setModeForSide(selectedKey, mode);
       setModeVariantForSide(selectedKey, "full");
+      suppressModeInferUntil = Date.now() + 2000;
       reflectModeUIForSelected();
     }
 
@@ -1426,10 +1485,21 @@
       // Switch to the target mode.
       setModeForSide(selectedKey, mode);
       setModeVariantForSide(selectedKey, "saved");
+      suppressModeInferUntil = Date.now() + 2000;
       reflectModeUIForSelected();
+
+      // Ensure saved windows aren't accidentally swapped/corrupted.
+      normalizeSavedWindowsForSide(selectedKey);
 
       const mem = readMem(selectedKey, mode);
       if (mem && typeof mem.c1 === "number" && typeof mem.c2 === "number") {
+        // Validate that the stored window actually matches the intended mode.
+        // If it doesn't, fall back to anchors (prevents instant "flip back" of the selected Mode button).
+        const b = bestStepForEncoded(selectedKey, mode, mem.c1, mem.c2);
+        if (!b || b.score > 2) {
+          await setAnchors(mode);
+          return;
+        }
         const t = currentTuning();
         const payload = {
           id: s.id,
@@ -1464,6 +1534,7 @@
 
       // Any manual size adjustment becomes a saved preference.
       setModeVariantForSide(selectedKey, "saved");
+      suppressModeInferUntil = Date.now() + 2000;
       reflectModeUIForSelected();
 
       const mode = modeKeyForSide(selectedKey);
@@ -1593,6 +1664,8 @@
     // Start
     (async () => {
       await loadDeviceStore();
+      normalizeSavedWindowsForSide("daniel");
+      normalizeSavedWindowsForSide("gabi");
       await initBootPresetInfo();
       setSelected(selectedKey in DEVICE.segments ? selectedKey : "daniel");
       setSwatch(ui.colorPick.value);

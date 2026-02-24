@@ -266,6 +266,8 @@ If you use a local/self-signed CA, iOS will only stop warning after you install 
     - When you switch Top↔Side, it restores the last-used window for the target mode.
     - This memory is stored on-device in **`/bedside-remote.json`** (and also cached in browser `localStorage`).
     - With **Persist on device** enabled, it survives firmware flashes/reboots.
+  - The remote also auto-syncs the selected Mode button to the **current** `c1/c2` when state changes outside the remote (presets/WLED UI),
+    and it validates stored windows so Side doesn’t accidentally contain a Top window (and vice versa).
   - Brightness and color are shared per bedside (segment) across both modes.
 - **Warmer / Colder**: nudges the segment’s primary color step-by-step towards a warmer or colder reference white (keeps the effect).
 - **Color picker**: applies only the selected RGB color to the segment’s primary color when you close the picker (does not change brightness/window/effect).
