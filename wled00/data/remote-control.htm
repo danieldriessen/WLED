@@ -78,9 +78,10 @@
       border:1px solid var(--line);
       background:rgba(0,0,0,.22);
       box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
-      color:var(--muted);
+      color:rgba(231,238,252,.82);
       user-select:none;
       -webkit-tap-highlight-color: transparent;
+      backdrop-filter: blur(10px);
     }
     .iconbtn:active{transform:scale(.99)}
     .iconbtn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -116,7 +117,7 @@
       user-select:none;
       -webkit-tap-highlight-color: transparent;
     }
-    .seg-btn .seg-name{font-weight:800}
+    .seg-btn .seg-name{font-weight:900;letter-spacing:.2px;font-size:16px}
     .seg-btn .seg-state{display:flex;align-items:center;justify-content:center;gap:8px}
     .seg-btn .pwrstate{font-size:11px}
     .seg-btn:active{transform:scale(.99)}
@@ -314,10 +315,17 @@
           <span class="dot" id="connDot"></span>
           <span id="connText">Connecting…</span>
         </div>
-        <div class="iconbtn" id="btnAdvanced" role="button" tabindex="0" aria-label="Advanced">
+        <div class="iconbtn" id="btnAdvanced" role="button" tabindex="0" aria-label="Settings">
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>
-            <path d="M19.4 15a1.8 1.8 0 0 0 .3 2l.1.1a2.1 2.1 0 0 1-1.5 3.6h-.2a1.8 1.8 0 0 0-1.7 1.3 2.1 2.1 0 0 1-4 0 1.8 1.8 0 0 0-1.7-1.3h-.2a2.1 2.1 0 0 1-1.5-3.6l.1-.1a1.8 1.8 0 0 0 .3-2 1.8 1.8 0 0 0-1.6-1H6a2.1 2.1 0 0 1 0-4h.1a1.8 1.8 0 0 0 1.6-1 1.8 1.8 0 0 0-.3-2l-.1-.1A2.1 2.1 0 0 1 8.8 4.3H9a1.8 1.8 0 0 0 1.7-1.3 2.1 2.1 0 0 1 4 0A1.8 1.8 0 0 0 16.4 4.3h.2a2.1 2.1 0 0 1 1.5 3.6l-.1.1a1.8 1.8 0 0 0-.3 2 1.8 1.8 0 0 0 1.6 1H18a2.1 2.1 0 0 1 0 4h-.1a1.8 1.8 0 0 0-1.6 1z"/>
+            <path d="M12 2v2"/>
+            <path d="M12 20v2"/>
+            <path d="M4.9 4.9l1.4 1.4"/>
+            <path d="M17.7 17.7l1.4 1.4"/>
+            <path d="M2 12h2"/>
+            <path d="M20 12h2"/>
+            <path d="M4.9 19.1l1.4-1.4"/>
+            <path d="M17.7 6.3l1.4-1.4"/>
+            <circle cx="12" cy="12" r="3"/>
           </svg>
         </div>
       </div>
