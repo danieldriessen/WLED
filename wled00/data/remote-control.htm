@@ -155,6 +155,28 @@
       font-size:12px;font-weight:700;
     }
 
+    .pwrbar{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+    .pwrpill{
+      height:44px;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.18);
+      display:flex;align-items:center;justify-content:space-between;
+      padding:10px 12px;
+      gap:10px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+    }
+    .pwrpill.sel{
+      border-color:rgba(90,168,255,.55);
+      background:linear-gradient(180deg, rgba(90,168,255,.18), rgba(0,0,0,.16));
+    }
+    .pwrleft{display:flex;align-items:center;gap:10px;min-width:0}
+    .pwrname{font-weight:900;letter-spacing:.2px}
+    .pwrstate{font-size:12px;color:var(--muted);font-weight:800;white-space:nowrap}
+    .pwrdot{width:10px;height:10px;border-radius:50%;background:var(--danger);flex:0 0 auto}
+    .pwrdot.on{background:var(--accent2)}
+    .pwrdot.anim{background:var(--warn)}
+
     details{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
     summary{
       cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;
@@ -200,6 +222,23 @@
     </div>
 
     <div class="card">
+      <div class="pwrbar" aria-label="Bedside status">
+        <div class="pwrpill" id="pwrDaniel">
+          <div class="pwrleft">
+            <span class="pwrdot" id="pwrDanielDot" aria-hidden="true"></span>
+            <span class="pwrname">Daniel</span>
+          </div>
+          <span class="pwrstate" id="pwrDanielState">—</span>
+        </div>
+        <div class="pwrpill" id="pwrGabi">
+          <div class="pwrleft">
+            <span class="pwrdot" id="pwrGabiDot" aria-hidden="true"></span>
+            <span class="pwrname">Gabriela</span>
+          </div>
+          <span class="pwrstate" id="pwrGabiState">—</span>
+        </div>
+      </div>
+
       <div class="grid2">
         <div class="btn primary" id="btnOn">ON</div>
         <div class="btn danger" id="btnOff">OFF</div>
@@ -227,8 +266,8 @@
         <div class="label">Mode</div>
       </div>
       <div class="grid2">
-        <div class="btn" id="btnSide"><span class="ico" aria-hidden="true">↔</span>Side</div>
-        <div class="btn" id="btnTop"><span class="ico" aria-hidden="true">↕</span>Top</div>
+        <div class="btn" id="btnSide"><span class="ico" aria-hidden="true">↕</span>Side</div>
+        <div class="btn" id="btnTop"><span class="ico" aria-hidden="true">↔</span>Top</div>
       </div>
 
       <div class="row">
@@ -353,6 +392,9 @@
     const ui = {
       connPill: $("connPill"), connDot: $("connDot"), connText: $("connText"),
       btnDaniel: $("btnDaniel"), btnGabi: $("btnGabi"),
+      pwrDaniel: $("pwrDaniel"), pwrGabi: $("pwrGabi"),
+      pwrDanielDot: $("pwrDanielDot"), pwrGabiDot: $("pwrGabiDot"),
+      pwrDanielState: $("pwrDanielState"), pwrGabiState: $("pwrGabiState"),
       btnOn: $("btnOn"), btnOff: $("btnOff"),
       btnBriDown: $("btnBriDown"), btnBriUp: $("btnBriUp"), briSlider: $("briSlider"), briVal: $("briVal"),
       btnMore: $("btnMore"), btnLess: $("btnLess"),
@@ -607,6 +649,8 @@
       localStorage.setItem(LS_KEY, key);
       ui.btnDaniel.classList.toggle("sel", key === "daniel");
       ui.btnGabi.classList.toggle("sel", key === "gabi");
+      ui.pwrDaniel.classList.toggle("sel", key === "daniel");
+      ui.pwrGabi.classList.toggle("sel", key === "gabi");
       reflectModeUIForSelected();
       renderFromState(lastState);
     }
@@ -635,40 +679,60 @@
 
     function renderFromState(state) {
       if (!state) return;
-      const seg = getSegFromState(state, selected().id);
-      if (!seg) return;
+      const sSel = selected();
+      const segSel = getSegFromState(state, sSel.id);
+      if (!segSel) return;
 
       const now = Date.now();
       const allowTuningFromState = now >= suppressTuningFromStateUntil;
       const notActive = (el) => document.activeElement !== el;
 
       // Brightness
-      if (allowTuningFromState && notActive(ui.briSlider) && typeof seg.bri === "number") {
-        ui.briSlider.value = seg.bri;
+      if (allowTuningFromState && notActive(ui.briSlider) && typeof segSel.bri === "number") {
+        ui.briSlider.value = segSel.bri;
       }
       ui.briVal.textContent = briToPct(parseInt(ui.briSlider.value, 10));
 
       // Advanced tuning (sx/ix/c3 + o2/o3)
-      if (allowTuningFromState && notActive(ui.sxSlider) && typeof seg.sx === "number") ui.sxSlider.value = seg.sx;
-      if (allowTuningFromState && notActive(ui.ixSlider) && typeof seg.ix === "number") ui.ixSlider.value = seg.ix;
-      if (allowTuningFromState && notActive(ui.c3Slider) && typeof seg.c3 === "number") ui.c3Slider.value = seg.c3;
+      if (allowTuningFromState && notActive(ui.sxSlider) && typeof segSel.sx === "number") ui.sxSlider.value = segSel.sx;
+      if (allowTuningFromState && notActive(ui.ixSlider) && typeof segSel.ix === "number") ui.ixSlider.value = segSel.ix;
+      if (allowTuningFromState && notActive(ui.c3Slider) && typeof segSel.c3 === "number") ui.c3Slider.value = segSel.c3;
 
       ui.sxVal.textContent = `sx ${ui.sxSlider.value}`;
       ui.ixVal.textContent = `ix ${ui.ixSlider.value}`;
       ui.c3Val.textContent = `c3 ${ui.c3Slider.value}`;
-      ui.c12Val.textContent = `c1 ${seg.c1 ?? "—"} • c2 ${seg.c2 ?? "—"}`;
+      ui.c12Val.textContent = `c1 ${segSel.c1 ?? "—"} • c2 ${segSel.c2 ?? "—"}`;
 
-      if (allowTuningFromState && notActive(ui.o2Chk)) ui.o2Chk.checked = !!seg.o2;
-      if (allowTuningFromState && notActive(ui.o3Chk)) ui.o3Chk.checked = !!seg.o3;
+      if (allowTuningFromState && notActive(ui.o2Chk)) ui.o2Chk.checked = !!segSel.o2;
+      if (allowTuningFromState && notActive(ui.o3Chk)) ui.o3Chk.checked = !!segSel.o3;
 
-      // Represent current power state using the ON/OFF buttons themselves.
-      // For Lightbar effects, "ON" means seg.on && o1 (virtual desired power).
-      // For other effects, "ON" means seg.on.
-      const s = selected();
-      const isLightbar = (seg.fx === s.fx);
-      const isOn = isLightbar ? (!!seg.on && !!seg.o1) : !!seg.on;
-      ui.btnOn.classList.toggle("sel", isOn);
-      ui.btnOff.classList.toggle("sel", !isOn);
+      function setPwrUI(sideKey, pillEl, dotEl, stateEl) {
+        const cfg = DEVICE.segments[sideKey];
+        const seg = getSegFromState(state, cfg.id);
+        if (!seg) {
+          dotEl.classList.remove("on","anim");
+          stateEl.textContent = "—";
+          return;
+        }
+        const isLightbar = (seg.fx === cfg.fx);
+        const on = !!seg.on;
+        const desired = !!seg.o1;
+        let label = "OFF";
+        dotEl.classList.remove("on","anim");
+
+        if (isLightbar) {
+          if (on && desired) { label = "ON"; dotEl.classList.add("on"); }
+          else if (on && !desired) { label = "OFF (anim)"; dotEl.classList.add("anim"); }
+          else { label = "OFF"; }
+        } else {
+          if (on) { label = "ON"; dotEl.classList.add("on"); }
+          else { label = "OFF"; }
+        }
+        stateEl.textContent = label;
+      }
+
+      setPwrUI("daniel", ui.pwrDaniel, ui.pwrDanielDot, ui.pwrDanielState);
+      setPwrUI("gabi",   ui.pwrGabi,   ui.pwrGabiDot,   ui.pwrGabiState);
     }
 
     async function pollOnce() {
