@@ -29,16 +29,24 @@
     }
     *{box-sizing:border-box}
     html,body{height:100%}
-    body{
-      margin:0;
-      font-family:var(--font);
-      color:var(--text);
+    html{
       background:
         radial-gradient(1200px 700px at 20% -10%, rgba(90,168,255,.18), transparent 55%),
         radial-gradient(900px 600px at 90% 10%, rgba(124,240,201,.10), transparent 60%),
         radial-gradient(900px 900px at 40% 110%, rgba(255,90,123,.08), transparent 55%),
         linear-gradient(180deg, var(--bg0), var(--bg1));
+      background-color: var(--bg0); /* fallback to avoid iOS white overscroll */
+      overscroll-behavior: none;
+    }
+    body{
+      margin:0;
+      font-family:var(--font);
+      color:var(--text);
+      background: transparent;
+      background-color: var(--bg0);
+      min-height:100vh;
       padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px;
+      overscroll-behavior: none;
     }
     .wrap{max-width:520px;margin:0 auto;padding:18px 0 26px}
     header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
@@ -101,6 +109,22 @@
       gap:10px;
       user-select:none;
       -webkit-tap-highlight-color: transparent;
+    }
+    .btn.twoline .lbl{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      line-height:1.05;
+      gap:2px;
+      min-width:0;
+    }
+    .btn.twoline .lbl .t2{
+      font-size:11px;
+      font-weight:800;
+      color:var(--muted);
+      letter-spacing:0;
+      white-space:nowrap;
     }
     .ico{
       display:inline-flex;
@@ -321,8 +345,22 @@
         <div class="label">Mode</div>
       </div>
       <div class="grid2">
-        <div class="btn" id="btnSide"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M8 8l4-4 4 4"/><path d="M8 16l4 4 4-4"/></svg></span>Side</div>
-        <div class="btn" id="btnTop"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M8 8l-4 4 4 4"/><path d="M16 8l4 4-4 4"/></svg></span>Top</div>
+        <div class="btn twoline" id="btnSide">
+          <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M8 8l4-4 4 4"/><path d="M8 16l4 4 4-4"/></svg></span>
+          <span class="lbl"><span class="t1">Side</span><span class="t2">Saved Preference</span></span>
+        </div>
+        <div class="btn twoline" id="btnTop">
+          <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M8 8l-4 4 4 4"/><path d="M16 8l4 4-4 4"/></svg></span>
+          <span class="lbl"><span class="t1">Top</span><span class="t2">Saved Preference</span></span>
+        </div>
+        <div class="btn twoline" id="btnSideFull">
+          <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M8 8l4-4 4 4"/><path d="M8 16l4 4 4-4"/></svg></span>
+          <span class="lbl"><span class="t1">Side</span><span class="t2">Full</span></span>
+        </div>
+        <div class="btn twoline" id="btnTopFull">
+          <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M8 8l-4 4 4 4"/><path d="M16 8l4 4-4 4"/></svg></span>
+          <span class="lbl"><span class="t1">Top</span><span class="t2">Full</span></span>
+        </div>
       </div>
 
       <div class="row">
@@ -479,7 +517,7 @@
       btnOn: $("btnOn"), btnOff: $("btnOff"),
       btnBriDown: $("btnBriDown"), btnBriUp: $("btnBriUp"), briSlider: $("briSlider"), briVal: $("briVal"),
       btnMore: $("btnMore"), btnLess: $("btnLess"),
-      btnSide: $("btnSide"), btnTop: $("btnTop"),
+      btnSide: $("btnSide"), btnTop: $("btnTop"), btnSideFull: $("btnSideFull"), btnTopFull: $("btnTopFull"),
       btnWarm: $("btnWarm"), btnCool: $("btnCool"),
       colorPick: $("colorPick"), colorSwatch: $("colorSwatch"), btnColorApply: $("btnColorApply"),
       btnAdvanced: $("btnAdvanced"),
@@ -492,6 +530,7 @@
 
     const LS_KEY = "bedsideRemote.selected";
     const LS_MODE_PREFIX = "bedsideRemote.mode.";
+    const LS_MODEVAR_PREFIX = "bedsideRemote.modeVar.";
     const LS_MEM_PREFIX  = "bedsideRemote.mem.";
     const LS_STEP_PREFIX = "bedsideRemote.step.";
     const LS_PERSIST_KEY = "bedsideRemote.persistBootPreset";
@@ -500,6 +539,10 @@
       daniel: localStorage.getItem(LS_MODE_PREFIX + "daniel") || "side",
       gabi:   localStorage.getItem(LS_MODE_PREFIX + "gabi")   || "side",
     };
+    let modeVariantBySide = {
+      daniel: localStorage.getItem(LS_MODEVAR_PREFIX + "daniel") || "saved",
+      gabi:   localStorage.getItem(LS_MODEVAR_PREFIX + "gabi")   || "saved",
+    }; // "saved" | "full"
     let lastState = null;
     let pollTimer = null;
     let busy = false;
@@ -728,14 +771,29 @@
 
     function reflectModeUIForSelected() {
       const mode = modeKeyForSide(selectedKey);
-      ui.btnTop.classList.toggle("sel", mode === "top");
-      ui.btnSide.classList.toggle("sel", mode === "side");
+      const variant = modeVariantBySide[selectedKey] || "saved";
+      const saved = (variant !== "full");
+
+      ui.btnTop.classList.toggle("sel", mode === "top" && saved);
+      ui.btnSide.classList.toggle("sel", mode === "side" && saved);
+      ui.btnTopFull.classList.toggle("sel", mode === "top" && !saved);
+      ui.btnSideFull.classList.toggle("sel", mode === "side" && !saved);
+    }
+
+    function isFullVariant(sideKey) {
+      return (modeVariantBySide[sideKey] || "saved") === "full";
+    }
+
+    function setModeVariantForSide(sideKey, variant) {
+      const v = (variant === "full") ? "full" : "saved";
+      modeVariantBySide[sideKey] = v;
+      localStorage.setItem(LS_MODEVAR_PREFIX + sideKey, v);
     }
 
     function setSelected(key) {
       // Before switching, remember the last-used state into the current mode of the previous side.
       if (key !== selectedKey) {
-        rememberCurrentForSideMode(selectedKey, modeKeyForSide(selectedKey));
+        if (!isFullVariant(selectedKey)) rememberCurrentForSideMode(selectedKey, modeKeyForSide(selectedKey));
       }
 
       selectedKey = key;
@@ -888,6 +946,7 @@
 
     function schedulePersistToBootPreset() {
       if (!persistEnabled()) return;
+      if (isFullVariant(selectedKey)) return; // never persist "Full" windows
       if (persistTimer) clearTimeout(persistTimer);
       persistTimer = setTimeout(async () => {
         // Do NOT call safeAction() here (that would re-schedule persist and loop).
@@ -905,15 +964,15 @@
       pollOnce();
     }
 
-    async function safeAction(fn) {
+    async function safeAction(fn, opts = {}) {
       if (busy) return;
       busy = true;
       try { await fn(); }
       finally { busy = false; }
       await pollOnce();
       // Keep per-mode memory updated for the selected side, based on the current selected mode.
-      rememberCurrentForSideMode(selectedKey, modeKeyForSide(selectedKey));
-      schedulePersistToBootPreset();
+      if (opts.remember !== false && !isFullVariant(selectedKey)) rememberCurrentForSideMode(selectedKey, modeKeyForSide(selectedKey));
+      if (opts.persist !== false && !isFullVariant(selectedKey)) schedulePersistToBootPreset();
     }
 
     function currentTuning() {
@@ -1018,6 +1077,20 @@
       const t = currentTuning();
       await postState({ id: s.id, on: true, fx: s.fx, o1: true, ...t, c1, c2 });
       setModeForSide(selectedKey, mode);
+      setModeVariantForSide(selectedKey, "saved");
+      reflectModeUIForSelected();
+    }
+
+    async function setAnchorsFull(mode) {
+      const s = selected();
+      const a = DEVICE.anchors[selectedKey];
+      const range = (mode === "top") ? a.topMax : a.sideMax;
+      const c1 = encIdx(range[0], s.len);
+      const c2 = encIdx(range[1], s.len);
+      const t = currentTuning();
+      await postState({ id: s.id, on: true, fx: s.fx, o1: true, ...t, c1, c2 });
+      setModeForSide(selectedKey, mode);
+      setModeVariantForSide(selectedKey, "full");
       reflectModeUIForSelected();
     }
 
@@ -1027,10 +1100,11 @@
 
       // Remember what we were using in the previous mode for this side before switching.
       const prevMode = modeKeyForSide(selectedKey);
-      rememberCurrentForSideMode(selectedKey, prevMode);
+      if (!isFullVariant(selectedKey)) rememberCurrentForSideMode(selectedKey, prevMode);
 
       // Switch to the target mode.
       setModeForSide(selectedKey, mode);
+      setModeVariantForSide(selectedKey, "saved");
       reflectModeUIForSelected();
 
       const mem = readMem(selectedKey, mode);
@@ -1053,9 +1127,23 @@
       await setAnchors(mode);
     }
 
+    async function applyModeFull(mode) {
+      if (!lastState) await pollOnce();
+
+      // Remember what we were using in the previous mode for this side before switching.
+      const prevMode = modeKeyForSide(selectedKey);
+      if (!isFullVariant(selectedKey)) rememberCurrentForSideMode(selectedKey, prevMode);
+
+      await setAnchorsFull(mode);
+    }
+
     async function adjustSize(deltaSteps) {
       const s = selected();
       if (!lastState) await pollOnce();
+
+      // Any manual size adjustment becomes a saved preference.
+      setModeVariantForSide(selectedKey, "saved");
+      reflectModeUIForSelected();
 
       const mode = modeKeyForSide(selectedKey);
       const list = STEP_LISTS?.[selectedKey]?.[mode] || [];
@@ -1123,6 +1211,8 @@
 
     ui.btnTop.addEventListener("click", () => safeAction(() => applyMode("top")));
     ui.btnSide.addEventListener("click", () => safeAction(() => applyMode("side")));
+    ui.btnTopFull.addEventListener("click", () => safeAction(() => applyModeFull("top"), { remember: false, persist: false }));
+    ui.btnSideFull.addEventListener("click", () => safeAction(() => applyModeFull("side"), { remember: false, persist: false }));
 
     ui.btnWarm.addEventListener("click", () => safeAction(() => nudgeWarmCool("warm")));
     ui.btnCool.addEventListener("click", () => safeAction(() => nudgeWarmCool("cool")));
