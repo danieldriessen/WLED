@@ -177,23 +177,6 @@
     .pwrdot.on{background:var(--accent2)}
     .pwrdot.anim{background:var(--warn)}
 
-    details{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
-    summary{
-      cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;
-      font-weight:800;letter-spacing:.2px;
-      padding:10px 0;
-    }
-    summary::-webkit-details-marker{display:none}
-    .chev{
-      display:inline-block;
-      width:24px;
-      text-align:center;
-      color:var(--muted);
-      transform: rotate(0deg);
-      transition: transform .18s ease, color .18s ease;
-      user-select:none;
-    }
-    details[open] .chev{transform: rotate(90deg); color:var(--text);}
     .adv-grid{display:grid;grid-template-columns:1fr;gap:10px}
     .field{
       background:rgba(0,0,0,.16);
@@ -228,6 +211,38 @@
       height:100%;
       cursor:pointer;
     }
+
+    .adv-section{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+
+    .modal{position:fixed;inset:0;z-index:9999}
+    .modal[hidden]{display:none}
+    .modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+    .modal-sheet{
+      position:absolute;
+      left:0;right:0;bottom:0;
+      padding:12px 16px calc(env(safe-area-inset-bottom) + 16px);
+      background:rgba(12,16,26,.94);
+      border-top:1px solid rgba(255,255,255,.10);
+      border-top-left-radius:22px;
+      border-top-right-radius:22px;
+      box-shadow:0 -18px 60px rgba(0,0,0,.55);
+      max-height:85vh;
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .sheet-hdr{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+    .sheet-title{font-weight:900;letter-spacing:.2px}
+    .sheet-sub{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.35}
+    .sheet-close{
+      width:44px;height:44px;border-radius:14px;
+      display:flex;align-items:center;justify-content:center;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.05);
+      color:var(--text);
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .sheet-close svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   </style>
 </head>
 <body>
@@ -321,77 +336,92 @@
         <div class="btn small" id="btnColorApply"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>Apply</div>
       </div>
 
-      <details>
-        <summary>
+      <div class="adv-section">
+        <div class="btn" id="btnAdvanced">
+          <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.9 4.9l1.4 1.4"/><path d="M17.7 17.7l1.4 1.4"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.9 19.1l1.4-1.4"/><path d="M17.7 6.3l1.4-1.4"/><circle cx="12" cy="12" r="3"/></svg></span>
           Advanced
-          <span class="chev" aria-hidden="true">▸</span>
-        </summary>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        <div class="adv-grid">
-          <div class="field">
-            <div class="top">
-              <div class="k">Expand speed</div>
-              <div class="v mono" id="sxVal">sx —</div>
-            </div>
-            <input type="range" min="0" max="255" value="90" id="sxSlider">
+  <div class="modal" id="advModal" hidden aria-hidden="true">
+    <div class="modal-backdrop" id="advBackdrop" aria-hidden="true"></div>
+    <div class="modal-sheet" role="dialog" aria-modal="true" aria-label="Advanced">
+      <div class="sheet-hdr">
+        <div>
+          <div class="sheet-title">Advanced</div>
+          <div class="sheet-sub">Tuning for the selected bedside (applies to the current segment).</div>
+        </div>
+        <div class="sheet-close" id="advClose" role="button" tabindex="0" aria-label="Close">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>
+        </div>
+      </div>
+
+      <div class="adv-grid">
+        <div class="field">
+          <div class="top">
+            <div class="k">Expand speed</div>
+            <div class="v mono" id="sxVal">sx —</div>
           </div>
+          <input type="range" min="0" max="255" value="90" id="sxSlider">
+        </div>
 
-          <div class="field">
-            <div class="top">
-              <div class="k">Retract speed</div>
-              <div class="v mono" id="ixVal">ix —</div>
-            </div>
-            <input type="range" min="0" max="255" value="120" id="ixSlider">
+        <div class="field">
+          <div class="top">
+            <div class="k">Retract speed</div>
+            <div class="v mono" id="ixVal">ix —</div>
           </div>
+          <input type="range" min="0" max="255" value="120" id="ixSlider">
+        </div>
 
-          <div class="field">
-            <div class="top">
-              <div class="k">Overlap</div>
-              <div class="v mono" id="c3Val">c3 —</div>
-            </div>
-            <input type="range" min="0" max="31" value="14" id="c3Slider">
-            <div class="footer">In WLED, <span class="mono">c3</span> is 0–31. The effect maps it to ~0–80 LEDs overlap.</div>
+        <div class="field">
+          <div class="top">
+            <div class="k">Overlap</div>
+            <div class="v mono" id="c3Val">c3 —</div>
           </div>
+          <input type="range" min="0" max="31" value="14" id="c3Slider">
+          <div class="footer">In WLED, <span class="mono">c3</span> is 0–31. The effect maps it to ~0–80 LEDs overlap.</div>
+        </div>
 
-          <div class="field">
-            <div class="toggle">
-              <div>
-                <div style="font-weight:800">Realistic OFF</div>
-                <div class="hint">Speed-up + small brightness swell near ground</div>
-              </div>
-              <input type="checkbox" id="o2Chk" checked>
+        <div class="field">
+          <div class="toggle">
+            <div>
+              <div style="font-weight:800">Realistic OFF</div>
+              <div class="hint">Speed-up + small brightness swell near ground</div>
             </div>
-          </div>
-
-          <div class="field">
-            <div class="toggle">
-              <div>
-                <div style="font-weight:800">No animation</div>
-                <div class="hint">Instant jump to steady ON/OFF (debug)</div>
-              </div>
-              <input type="checkbox" id="o3Chk">
-            </div>
-          </div>
-
-          <div class="field">
-            <div class="toggle">
-              <div>
-                <div style="font-weight:800">Tight mode</div>
-                <div class="hint">Use “min” windows for Top/Side buttons</div>
-              </div>
-              <input type="checkbox" id="tightChk">
-            </div>
-          </div>
-
-          <div class="field">
-            <div class="top">
-              <div class="k">Current target</div>
-              <div class="v mono" id="c12Val">c1/c2 —</div>
-            </div>
-            <div class="footer">This page drives <span class="mono">/json/state</span> for the selected segment and uses <span class="mono">o1</span> for OFF-with-animation.</div>
+            <input type="checkbox" id="o2Chk" checked>
           </div>
         </div>
-      </details>
+
+        <div class="field">
+          <div class="toggle">
+            <div>
+              <div style="font-weight:800">No animation</div>
+              <div class="hint">Instant jump to steady ON/OFF (debug)</div>
+            </div>
+            <input type="checkbox" id="o3Chk">
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="toggle">
+            <div>
+              <div style="font-weight:800">Tight mode</div>
+              <div class="hint">Use “min” windows for Top/Side buttons</div>
+            </div>
+            <input type="checkbox" id="tightChk">
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="top">
+            <div class="k">Current target</div>
+            <div class="v mono" id="c12Val">c1/c2 —</div>
+          </div>
+          <div class="footer">This page drives <span class="mono">/json/state</span> for the selected segment and uses <span class="mono">o1</span> for OFF-with-animation.</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -437,6 +467,8 @@
       btnSide: $("btnSide"), btnTop: $("btnTop"),
       btnWarm: $("btnWarm"), btnCool: $("btnCool"),
       colorPick: $("colorPick"), colorSwatch: $("colorSwatch"), btnColorApply: $("btnColorApply"),
+      btnAdvanced: $("btnAdvanced"),
+      advModal: $("advModal"), advBackdrop: $("advBackdrop"), advClose: $("advClose"),
       sxSlider: $("sxSlider"), ixSlider: $("ixSlider"), c3Slider: $("c3Slider"),
       sxVal: $("sxVal"), ixVal: $("ixVal"), c3Val: $("c3Val"),
       o2Chk: $("o2Chk"), o3Chk: $("o3Chk"), tightChk: $("tightChk"),
@@ -831,6 +863,17 @@
       suppressTuningFromStateUntil = Date.now() + 1400;
     }
 
+    function openAdvanced() {
+      ui.advModal.hidden = false;
+      ui.advModal.setAttribute("aria-hidden", "false");
+      // keep focus on close for easy dismissal
+      setTimeout(() => ui.advClose?.focus?.(), 0);
+    }
+    function closeAdvanced() {
+      ui.advModal.hidden = true;
+      ui.advModal.setAttribute("aria-hidden", "true");
+    }
+
     async function applyTuningFromUI() {
       const s = selected();
       const t = currentTuning();
@@ -1019,6 +1062,12 @@
 
     ui.btnColorApply.addEventListener("click", () => safeAction(() => setColorRGB(ui.colorPick.value)));
     ui.colorPick.addEventListener("input", () => { setSwatch(ui.colorPick.value); });
+
+    ui.btnAdvanced.addEventListener("click", openAdvanced);
+    ui.advBackdrop.addEventListener("click", closeAdvanced);
+    ui.advClose.addEventListener("click", closeAdvanced);
+    ui.advClose.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") closeAdvanced(); });
+    window.addEventListener("keydown", (e) => { if (e.key === "Escape" && !ui.advModal.hidden) closeAdvanced(); });
 
     const updAdv = () => {
       userAdjustingTuning();

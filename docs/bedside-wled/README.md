@@ -257,5 +257,6 @@ If you use a local/self-signed CA, iOS will only stop warning after you install 
 - **Advanced**:
   - `sx`, `ix`, `c3`, `o2`, `o3`, and Tight mode
   - Changes are applied to the selected segment via `/json/state` (sliders apply on release; checkboxes apply immediately).
+  - The Advanced controls open in a modal pop-up from the main page (to keep the default UI minimal).
 
 
