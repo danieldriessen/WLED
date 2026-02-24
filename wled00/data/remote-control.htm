@@ -116,9 +116,9 @@
       line-height:1;
       flex:0 0 auto;
     }
-    .ico.dot{width:14px;height:14px;border:0}
-    .ico.dot.warm{background:linear-gradient(180deg, rgba(255,190,120,.95), rgba(255,120,0,.92)); box-shadow:0 8px 20px rgba(255,140,0,.18)}
-    .ico.dot.cool{background:linear-gradient(180deg, rgba(190,245,255,.95), rgba(80,170,255,.92)); box-shadow:0 8px 20px rgba(90,168,255,.18)}
+    .ico svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    .ico.warm{color: #ffcc66; border-color: rgba(255,204,102,.35); background: rgba(255,204,102,.08)}
+    .ico.cool{color: #7fb7ff; border-color: rgba(127,183,255,.35); background: rgba(127,183,255,.08)}
     .btn:active{transform:scale(.99)}
     .btn.primary{
       background:linear-gradient(180deg, rgba(124,240,201,.26), rgba(124,240,201,.10));
@@ -210,6 +210,24 @@
     .toggle input{width:22px;height:22px}
     .footer{margin-top:12px;font-size:12px;color:var(--muted);line-height:1.4}
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+
+    .colorbtn{position:relative;overflow:hidden;justify-content:space-between}
+    .colorbtn .left{display:flex;align-items:center;gap:10px;min-width:0}
+    .swatch{
+      width:26px;height:26px;border-radius:10px;
+      border:1px solid var(--line);
+      background:#ffa000;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.10);
+      flex:0 0 auto;
+    }
+    input.color-input{
+      position:absolute;
+      inset:0;
+      opacity:0.0001;
+      width:100%;
+      height:100%;
+      cursor:pointer;
+    }
   </style>
 </head>
 <body>
@@ -268,32 +286,39 @@
         <div class="label">Size</div>
       </div>
       <div class="grid2">
-        <div class="btn" id="btnLess"><span class="ico" aria-hidden="true">−</span>Less LEDs</div>
-        <div class="btn" id="btnMore"><span class="ico" aria-hidden="true">+</span>More LEDs</div>
+        <div class="btn" id="btnLess"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></span>Less LEDs</div>
+        <div class="btn" id="btnMore"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>More LEDs</div>
       </div>
 
       <div class="row">
         <div class="label">Mode</div>
       </div>
       <div class="grid2">
-        <div class="btn" id="btnSide"><span class="ico" aria-hidden="true">↕</span>Side</div>
-        <div class="btn" id="btnTop"><span class="ico" aria-hidden="true">↔</span>Top</div>
+        <div class="btn" id="btnSide"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4v16"/><path d="M8 4h8"/><path d="M8 20h8"/></svg></span>Side</div>
+        <div class="btn" id="btnTop"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h16"/><path d="M4 8v8"/><path d="M20 8v8"/></svg></span>Top</div>
       </div>
 
       <div class="row">
         <div class="label">White</div>
       </div>
       <div class="grid2">
-        <div class="btn" id="btnWarm"><span class="ico dot warm" aria-hidden="true"></span>Warmer</div>
-        <div class="btn" id="btnCool"><span class="ico dot cool" aria-hidden="true"></span>Colder</div>
+        <div class="btn" id="btnWarm"><span class="ico warm" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/><path d="M4.2 4.2l2.1 2.1"/><path d="M17.7 17.7l2.1 2.1"/><path d="M19.8 4.2l-2.1 2.1"/><path d="M6.3 17.7l-2.1 2.1"/></svg></span>Warmer</div>
+        <div class="btn" id="btnCool"><span class="ico cool" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M7 6l10 12"/><path d="M17 6L7 18"/><path d="M4.5 9h15"/><path d="M4.5 15h15"/></svg></span>Colder</div>
       </div>
 
       <div class="row">
         <div class="label">Color</div>
       </div>
       <div class="grid2">
-        <input class="btn small" id="colorPick" type="color" value="#ffa000" aria-label="Pick color">
-        <div class="btn small" id="btnColorApply">Apply</div>
+        <label class="btn small colorbtn" id="colorPickBtn" aria-label="Pick color">
+          <span class="left">
+            <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s7-4.4 7-10a7 7 0 0 0-14 0c0 5.6 7 10 7 10z"/><path d="M12 11h0"/></svg></span>
+            <span>Color</span>
+          </span>
+          <span class="swatch" id="colorSwatch" aria-hidden="true"></span>
+          <input class="color-input" id="colorPick" type="color" value="#ffa000" aria-label="Pick color">
+        </label>
+        <div class="btn small" id="btnColorApply"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>Apply</div>
       </div>
 
       <details>
@@ -411,7 +436,7 @@
       btnMore: $("btnMore"), btnLess: $("btnLess"),
       btnSide: $("btnSide"), btnTop: $("btnTop"),
       btnWarm: $("btnWarm"), btnCool: $("btnCool"),
-      colorPick: $("colorPick"), btnColorApply: $("btnColorApply"),
+      colorPick: $("colorPick"), colorSwatch: $("colorSwatch"), btnColorApply: $("btnColorApply"),
       sxSlider: $("sxSlider"), ixSlider: $("ixSlider"), c3Slider: $("c3Slider"),
       sxVal: $("sxVal"), ixVal: $("ixVal"), c3Val: $("c3Val"),
       o2Chk: $("o2Chk"), o3Chk: $("o3Chk"), tightChk: $("tightChk"),
@@ -551,6 +576,15 @@
       return [c[0] ?? 0, c[1] ?? 0, c[2] ?? 0, c[3] ?? 0].map(v => clamp(parseInt(v, 10) || 0, 0, 255));
     }
 
+    function rgbToHex(r,g,b) {
+      const h = (n) => clamp(n,0,255).toString(16).padStart(2,"0");
+      return `#${h(r)}${h(g)}${h(b)}`;
+    }
+    function setSwatch(hex) {
+      if (!ui.colorSwatch) return;
+      ui.colorSwatch.style.background = hex || "#ffa000";
+    }
+
     function currentColorOrDefault() {
       const seg = getSegFromState(lastState, selected().id);
       return segPrimaryCol(seg) || [255,160,0,0];
@@ -583,10 +617,7 @@
     function snapshotForLightbar(seg) {
       if (!seg) return null;
       if (typeof seg.c1 !== "number" || typeof seg.c2 !== "number") return null;
-      const col0 = segPrimaryCol(seg);
       return {
-        bri: typeof seg.bri === "number" ? clamp(seg.bri, 1, 255) : null,
-        col: col0,
         c1: seg.c1,
         c2: seg.c2,
       };
@@ -716,6 +747,18 @@
 
       if (allowTuningFromState && notActive(ui.o2Chk)) ui.o2Chk.checked = !!segSel.o2;
       if (allowTuningFromState && notActive(ui.o3Chk)) ui.o3Chk.checked = !!segSel.o3;
+
+      // Color picker preview (reflect current segment primary color when idle)
+      if (allowTuningFromState && notActive(ui.colorPick)) {
+        const c0 = segPrimaryCol(segSel);
+        if (c0) {
+          const hex = rgbToHex(c0[0], c0[1], c0[2]);
+          if (ui.colorPick.value !== hex) ui.colorPick.value = hex;
+          setSwatch(hex);
+        }
+      } else {
+        setSwatch(ui.colorPick.value);
+      }
 
       function setPwrUI(sideKey, pillEl, dotEl, stateEl) {
         const cfg = DEVICE.segments[sideKey];
@@ -892,8 +935,6 @@
           c1: mem.c1,
           c2: mem.c2,
         };
-        if (typeof mem.bri === "number") payload.bri = clamp(mem.bri, 1, 255);
-        if (Array.isArray(mem.col) && mem.col.length >= 3) payload.col = [[mem.col[0], mem.col[1], mem.col[2], mem.col[3] ?? 0]];
         await postState(payload);
         return;
       }
@@ -910,7 +951,7 @@
       const list = STEP_LISTS?.[selectedKey]?.[mode] || [];
       if (!list.length) return;
 
-      // Determine current range (segment-local), then move one step forward/backward with wrap-around.
+      // Determine current range (segment-local), then move one step forward/backward (clamped).
       const cur = currentRangeLocalForSideMode(selectedKey, mode);
 
       let idx = readStepIndex(selectedKey, mode);
@@ -977,6 +1018,7 @@
     ui.btnCool.addEventListener("click", () => safeAction(() => nudgeWarmCool("cool")));
 
     ui.btnColorApply.addEventListener("click", () => safeAction(() => setColorRGB(ui.colorPick.value)));
+    ui.colorPick.addEventListener("input", () => { setSwatch(ui.colorPick.value); });
 
     const updAdv = () => {
       userAdjustingTuning();
@@ -995,6 +1037,7 @@
 
     // Start
     setSelected(selectedKey in DEVICE.segments ? selectedKey : "daniel");
+    setSwatch(ui.colorPick.value);
     startPolling();
   })();
   </script>

@@ -248,9 +248,10 @@ If you use a local/self-signed CA, iOS will only stop warning after you install 
 - **Top / Side**:
   - Applies the per-side anchor windows above
   - If **Tight mode** is enabled (Advanced), uses the `min` window; otherwise uses `max`
-  - Per bedside side, the remote also remembers **last-used** window (`c1/c2`), brightness, and color **separately for Top and Side**:
-    - When you switch Top↔Side, it restores the last-used state for the target mode.
+  - Per bedside side, the remote remembers **last-used** window (`c1/c2`) **separately for Top and Side**:
+    - When you switch Top↔Side, it restores the last-used window for the target mode.
     - This memory is stored in the browser’s `localStorage` (per phone/browser), not on the WLED device.
+  - Brightness and color are shared per bedside (segment) across both modes.
 - **Warmer / Colder**: nudges the segment’s primary color step-by-step towards a warmer or colder reference white (keeps the effect).
 - **Color picker “Apply”**: applies only the selected RGB color to the segment’s primary color (does not change brightness/window/effect).
 - **Advanced**:
