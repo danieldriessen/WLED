@@ -258,5 +258,6 @@ If you use a local/self-signed CA, iOS will only stop warning after you install 
   - `sx`, `ix`, `c3`, `o2`, `o3`, and Tight mode
   - Changes are applied to the selected segment via `/json/state` (sliders apply on release; checkboxes apply immediately).
   - The Advanced controls open in a modal pop-up from the main page (to keep the default UI minimal).
+  - **Persist on device**: when enabled, the remote will periodically save the current device state back into WLED’s configured **boot preset** (debounced), so your last-used state survives firmware flashes/reboots.
 
 

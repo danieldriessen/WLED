@@ -415,6 +415,16 @@
         </div>
 
         <div class="field">
+          <div class="toggle">
+            <div>
+              <div style="font-weight:800">Persist on device</div>
+              <div class="hint">Save state to your boot preset after changes</div>
+            </div>
+            <input type="checkbox" id="persistChk" checked>
+          </div>
+        </div>
+
+        <div class="field">
           <div class="top">
             <div class="k">Current target</div>
             <div class="v mono" id="c12Val">c1/c2 —</div>
@@ -471,7 +481,7 @@
       advModal: $("advModal"), advBackdrop: $("advBackdrop"), advClose: $("advClose"),
       sxSlider: $("sxSlider"), ixSlider: $("ixSlider"), c3Slider: $("c3Slider"),
       sxVal: $("sxVal"), ixVal: $("ixVal"), c3Val: $("c3Val"),
-      o2Chk: $("o2Chk"), o3Chk: $("o3Chk"), tightChk: $("tightChk"),
+      o2Chk: $("o2Chk"), o3Chk: $("o3Chk"), tightChk: $("tightChk"), persistChk: $("persistChk"),
       c12Val: $("c12Val"),
     };
 
@@ -479,6 +489,7 @@
     const LS_MODE_PREFIX = "bedsideRemote.mode.";
     const LS_MEM_PREFIX  = "bedsideRemote.mem.";
     const LS_STEP_PREFIX = "bedsideRemote.step.";
+    const LS_PERSIST_KEY = "bedsideRemote.persistBootPreset";
     let selectedKey = localStorage.getItem(LS_KEY) || "daniel";
     let selectedModeBySide = {
       daniel: localStorage.getItem(LS_MODE_PREFIX + "daniel") || "side",
@@ -488,6 +499,9 @@
     let pollTimer = null;
     let busy = false;
     let suppressTuningFromStateUntil = 0;
+    let bootPresetId = null;
+    let bootPresetName = null;
+    let persistTimer = null;
 
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
     const briToPct = (bri) => `${Math.round(clamp(bri ?? 0, 0, 255) * 100 / 255)} %`;
@@ -729,8 +743,7 @@
       renderFromState(lastState);
     }
 
-    async function postState(segObj) {
-      const payload = { seg: [segObj] };
+    async function postJson(payload) {
       const res = await fetch("/json/state", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -738,6 +751,10 @@
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.json().catch(() => ({}));
+    }
+
+    async function postState(segObj) {
+      return await postJson({ seg: [segObj] });
     }
 
     function conn(ok, txt, level="ok") {
@@ -833,6 +850,45 @@
       }
     }
 
+    async function initBootPresetInfo() {
+      try {
+        const res = await fetch("/json/info", { cache: "no-store" });
+        if (!res.ok) return;
+        const info = await res.json();
+        const bps = info?.leds?.bootps;
+        if (typeof bps === "number" && bps > 0 && bps < 251) bootPresetId = bps;
+      } catch {}
+
+      if (!bootPresetId) return;
+
+      try {
+        const res = await fetch("/presets.json", { cache: "no-store" });
+        if (!res.ok) return;
+        const presets = await res.json();
+        const p = presets[String(bootPresetId)] || presets[bootPresetId];
+        if (p && typeof p.n === "string" && p.n.length) bootPresetName = p.n;
+      } catch {}
+    }
+
+    function persistEnabled() {
+      return !!ui.persistChk?.checked && !!bootPresetId;
+    }
+
+    async function persistToBootPresetNow() {
+      if (!persistEnabled()) return;
+      const payload = { psave: bootPresetId, ib: 1, sb: 1 };
+      if (bootPresetName) payload.n = bootPresetName;
+      await postJson(payload);
+    }
+
+    function schedulePersistToBootPreset() {
+      if (!persistEnabled()) return;
+      if (persistTimer) clearTimeout(persistTimer);
+      persistTimer = setTimeout(() => {
+        safeAction(persistToBootPresetNow);
+      }, 1500);
+    }
+
     function startPolling() {
       if (pollTimer) clearInterval(pollTimer);
       pollTimer = setInterval(pollOnce, 900);
@@ -847,6 +903,7 @@
       await pollOnce();
       // Keep per-mode memory updated for the selected side, based on the current selected mode.
       rememberCurrentForSideMode(selectedKey, modeKeyForSide(selectedKey));
+      schedulePersistToBootPreset();
     }
 
     function currentTuning() {
@@ -1084,9 +1141,17 @@
     ui.o2Chk.addEventListener("change", () => { userAdjustingTuning(); safeAction(applyTuningFromUI); });
     ui.o3Chk.addEventListener("change", () => { userAdjustingTuning(); safeAction(applyTuningFromUI); });
 
+    // Persist toggle (per iOS device/browser). Requires a boot preset to be set in WLED.
+    ui.persistChk.checked = (localStorage.getItem(LS_PERSIST_KEY) ?? "1") !== "0";
+    ui.persistChk.addEventListener("change", () => {
+      localStorage.setItem(LS_PERSIST_KEY, ui.persistChk.checked ? "1" : "0");
+      if (ui.persistChk.checked) schedulePersistToBootPreset();
+    });
+
     // Start
     setSelected(selectedKey in DEVICE.segments ? selectedKey : "daniel");
     setSwatch(ui.colorPick.value);
+    initBootPresetInfo();
     startPolling();
   })();
   </script>
