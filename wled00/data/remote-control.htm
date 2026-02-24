@@ -194,14 +194,28 @@
     .footer{margin-top:12px;font-size:12px;color:var(--muted);line-height:1.4}
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
 
-    .colorbtn{position:relative;overflow:hidden;justify-content:space-between}
-    .colorbtn .left{display:flex;align-items:center;gap:10px;min-width:0}
+    .colorbtn{
+      position:relative;
+      overflow:hidden;
+      justify-content:center;
+      padding:0;
+    }
     .swatch{
-      width:26px;height:26px;border-radius:10px;
-      border:1px solid var(--line);
+      position:absolute;
+      inset:0;
+      border-radius:inherit;
+      border:0;
       background:#ffa000;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.10);
-      flex:0 0 auto;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
+    }
+    .colorbtn::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:inherit;
+      pointer-events:none;
+      background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(0,0,0,.08));
+      opacity:.35;
     }
     input.color-input{
       position:absolute;
@@ -211,8 +225,6 @@
       height:100%;
       cursor:pointer;
     }
-
-    .adv-section{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
 
     .modal{position:fixed;inset:0;z-index:9999}
     .modal[hidden]{display:none}
@@ -309,8 +321,8 @@
         <div class="label">Mode</div>
       </div>
       <div class="grid2">
-        <div class="btn" id="btnSide"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4v16"/><path d="M8 4h8"/><path d="M8 20h8"/></svg></span>Side</div>
-        <div class="btn" id="btnTop"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h16"/><path d="M4 8v8"/><path d="M20 8v8"/></svg></span>Top</div>
+        <div class="btn" id="btnSide"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M8 8l4-4 4 4"/><path d="M8 16l4 4 4-4"/></svg></span>Side</div>
+        <div class="btn" id="btnTop"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M8 8l-4 4 4 4"/><path d="M16 8l4 4-4 4"/></svg></span>Top</div>
       </div>
 
       <div class="row">
@@ -326,22 +338,15 @@
       </div>
       <div class="grid2">
         <label class="btn small colorbtn" id="colorPickBtn" aria-label="Pick color">
-          <span class="left">
-            <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s7-4.4 7-10a7 7 0 0 0-14 0c0 5.6 7 10 7 10z"/><path d="M12 11h0"/></svg></span>
-            <span>Color</span>
-          </span>
           <span class="swatch" id="colorSwatch" aria-hidden="true"></span>
           <input class="color-input" id="colorPick" type="color" value="#ffa000" aria-label="Pick color">
         </label>
         <div class="btn small" id="btnColorApply"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>Apply</div>
       </div>
+    </div>
 
-      <div class="adv-section">
-        <div class="btn" id="btnAdvanced">
-          <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.9 4.9l1.4 1.4"/><path d="M17.7 17.7l1.4 1.4"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.9 19.1l1.4-1.4"/><path d="M17.7 6.3l1.4-1.4"/><circle cx="12" cy="12" r="3"/></svg></span>
-          Advanced
-        </div>
-      </div>
+    <div class="card">
+      <div class="btn" id="btnAdvanced">Advanced</div>
     </div>
   </div>
 

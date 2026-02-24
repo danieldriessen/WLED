@@ -184,6 +184,11 @@ This fork also includes a mobile-first remote page served directly from the devi
 
 It provides a Daniel/Gabriela selector and sends the correct per-segment `/json/state` commands (including OFF-with-animation via `o1=false`).
 
+UI notes:
+
+- The **Advanced** button is in its own separate card at the bottom of the page (opens a modal).
+- The **Color** picker button is a full-size color swatch (tap to pick); **Apply** applies only the selected color.
+
 ### Updating `/remote-control` without reflashing (A)
 
 This fork supports updating the `/remote-control` page **without** reflashing firmware by using WLED’s filesystem editor:
