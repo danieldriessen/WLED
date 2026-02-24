@@ -567,7 +567,7 @@
       // This keeps user-chosen brightness and only nudges hue/temperature.
       const warmRef = [255,160,0,0];
       const coolRef = [170,215,255,0];
-      const step = 0.18; // per-tap blend factor
+      const step = 0.10; // per-tap blend factor (smaller = finer steps)
 
       const cur = currentColorOrDefault();
       const ref = (dir > 0) ? warmRef : coolRef;
@@ -922,7 +922,11 @@
       }
 
       const dir = deltaSteps >= 0 ? 1 : -1;
-      const next = (idx + dir + list.length) % list.length;
+      // Clamp at ends (no wrap-around).
+      let next = idx + dir;
+      if (next < 0) next = 0;
+      if (next >= list.length) next = list.length - 1;
+      if (next === idx) return;
       writeStepIndex(selectedKey, mode, next);
 
       const [lo, hi] = list[next];

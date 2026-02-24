@@ -243,7 +243,7 @@ If you use a local/self-signed CA, iOS will only stop warning after you install 
 - **Brightness +/- and slider**: updates `seg.bri`
 - **More LEDs / Less LEDs**: steps through a **fixed ordered list of inclusive LED ranges** per bedside side and per mode (Top/Side).
   - **More LEDs** = next step; **Less LEDs** = previous step
-  - The list is **cyclic** (wrap-around): past max → min, past min → max
+  - The list is **clamped** (no wrap-around): at min/max it stops
   - This matches the “canonical step list” spec (two-phase expansion) you provided.
 - **Top / Side**:
   - Applies the per-side anchor windows above
