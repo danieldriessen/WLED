@@ -186,9 +186,11 @@ It provides a Daniel/Gabriela selector and sends the correct per-segment `/json/
 
 UI notes:
 
-- The **Advanced** button is in its own separate card at the bottom of the page (opens a modal).
+- The **Advanced** button is a small **gear button in the header** (opens a bottom-sheet modal).
 - The **Color** picker button is a full-size color swatch (tap to pick) and applies immediately when you close the picker (no Apply button).
 - **Warmer/Colder**: if the current color is not on the warm↔cool “white track”, the next press restores the last-used white-track color first, then subsequent presses step.
+- Layout is tuned to **avoid scrolling on typical iPhone screens**. On very small screens it will switch into a more compact layout and may still require minimal scrolling (content is never clipped).
+- **Portrait-only**: the page includes a manifest hint (`/remote-control-manifest.json`) and a landscape “rotate back” overlay so the iOS home-screen web app won’t be usable in landscape.
 
 ### Updating `/remote-control` without reflashing (A)
 
@@ -206,6 +208,9 @@ Practical workflow:
   - `http://<wled-ip>/edit`
 - **3) Upload your updated page**:
   - Upload the file **named exactly** `remote-control.htm` to the filesystem root (so it becomes `/remote-control.htm`).
+- **(Optional) 3b) Upload the manifest (portrait hint)**:
+  - Upload **`remote-control-manifest.json`** to the filesystem root (so it becomes `/remote-control-manifest.json`).
+  - If you already added the remote as an iOS home-screen app: **delete and re-add it** so iOS re-reads the manifest.
 - **4) Reload**:
   - Open `http://<wled-ip>/remote-control` and it should now serve your uploaded file.
 
@@ -213,6 +218,9 @@ Notes:
 
 - If you upload a gzipped page as `remote-control.htm.gz`, WLED will serve it as well.
 - To revert to the built-in page, delete `/remote-control.htm` (and `/remote-control.htm.gz`) in `/edit`.
+- If **Persist on device** is enabled, the remote will also create/update:
+  - **`/bedside-remote.json`** (remote memory: per-side/per-mode windows, mode selection, last white-track colors)
+  - This file lives on the WLED filesystem. Normal OTA firmware updates do **not** erase it, but a factory reset / “wipe settings” will.
 
 ### iOS “Not Secure” note (home screen web app)
 
@@ -245,7 +253,7 @@ If you use a local/self-signed CA, iOS will only stop warning after you install 
 - **OFF**:
   - If the segment is on the Lightbar effect, sends `"on": true` + `"o1": false` (OFF-with-animation; effect later turns `seg.on=false`)
   - Otherwise sends `"on": false` (normal WLED OFF)
-- **ON/OFF indication in the remote UI**: under the Daniel/Gabriela bedside selector, a status bar shows both sides’ state (ON / OFF / OFF (anim)).
+- **ON/OFF indication in the remote UI**: the Daniel/Gabriela selector buttons include a dot + label per side (ON / OFF / OFF (anim)).
 - **Brightness +/- and slider**: updates `seg.bri`
 - **More LEDs / Less LEDs**: steps through a **fixed ordered list of inclusive LED ranges** per bedside side and per mode (Top/Side).
   - **More LEDs** = next step; **Less LEDs** = previous step
@@ -256,14 +264,17 @@ If you use a local/self-signed CA, iOS will only stop warning after you install 
   - If **Tight mode** is enabled (Advanced), uses the `min` window; otherwise uses `max`
   - Per bedside side, the remote remembers **last-used** window (`c1/c2`) **separately for Top and Side**:
     - When you switch Top↔Side, it restores the last-used window for the target mode.
-    - This memory is stored in the browser’s `localStorage` (per phone/browser), not on the WLED device.
+    - This memory is stored on-device in **`/bedside-remote.json`** (and also cached in browser `localStorage`).
+    - With **Persist on device** enabled, it survives firmware flashes/reboots.
   - Brightness and color are shared per bedside (segment) across both modes.
 - **Warmer / Colder**: nudges the segment’s primary color step-by-step towards a warmer or colder reference white (keeps the effect).
-- **Color picker “Apply”**: applies only the selected RGB color to the segment’s primary color (does not change brightness/window/effect).
+- **Color picker**: applies only the selected RGB color to the segment’s primary color when you close the picker (does not change brightness/window/effect).
 - **Advanced**:
   - `sx`, `ix`, `c3`, `o2`, `o3`, and Tight mode
   - Changes are applied to the selected segment via `/json/state` (sliders apply on release; checkboxes apply immediately).
   - The Advanced controls open in a modal pop-up from the main page (to keep the default UI minimal).
-  - **Persist on device**: when enabled, the remote will periodically save the current device state back into WLED’s configured **boot preset** (debounced), so your last-used state survives firmware flashes/reboots.
+  - **Persist on device**: when enabled, the remote will periodically:
+    - Save the **current live segment state** into your WLED **boot preset** (debounced) and ensure `bootps` is set.
+    - Save the remote’s **per-mode memory** (Top/Side windows per side + mode selection + last “white-track” color) into **`/bedside-remote.json`** on the WLED filesystem.
 
 

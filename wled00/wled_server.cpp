@@ -622,6 +622,16 @@ void initServer()
     handleStaticContent(request, FPSTR(_remote_control), 200, FPSTR(CONTENT_TYPE_HTML), PAGE_remote_control, PAGE_remote_control_length);
   });
 
+  // PWA manifest for iOS home screen web app orientation hint (portrait).
+  // Also overridable via filesystem without reflashing.
+  static const char PAGE_remote_control_manifest[] PROGMEM =
+    "{\"name\":\"Bedside Remote\",\"short_name\":\"Bedside\",\"start_url\":\"/remote-control\",\"scope\":\"/\","
+    "\"display\":\"standalone\",\"orientation\":\"portrait-primary\",\"background_color\":\"#070a10\",\"theme_color\":\"#0b0f18\"}";
+  server.on(F("/remote-control-manifest.json"), HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (handleFileRead(request, F("/remote-control-manifest.json"))) return;
+    request->send_P(200, CONTENT_TYPE_JSON, PAGE_remote_control_manifest);
+  });
+
 #ifndef WLED_DISABLE_2D
   #ifdef WLED_ENABLE_PIXART
   static const char _pixart_htm[] PROGMEM = "/pixart.htm";

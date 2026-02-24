@@ -8,6 +8,7 @@
   <meta name="apple-mobile-web-app-title" content="Bedside Remote">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="/remote-control-manifest.json">
   <title>Bedside Remote</title>
   <style>
     :root{
@@ -43,7 +44,7 @@
       margin:0;
       font-family:var(--font);
       color:var(--text);
-      background:transparent;
+      background:var(--bg0);
       overflow:hidden;
       overscroll-behavior:none;
       -webkit-text-size-adjust: 100%;
@@ -68,12 +69,16 @@
       max-width:520px;
       margin:0 auto;
       height:100%;
+      height:100dvh;
       overflow:auto;
+      overflow-x:hidden;
+      overscroll-behavior:none;
       -webkit-overflow-scrolling: touch;
-      padding: calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 26px);
+      padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 2px);
       position:relative;
       z-index:1;
     }
+    .wrap > .card:last-of-type{margin-bottom:0}
     header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
     .title{display:flex;flex-direction:column;gap:4px}
     .title h1{margin:0;font-size:20px;letter-spacing:.2px}
@@ -228,6 +233,16 @@
       align-items:center;
       margin-top:10px;
     }
+    .btn.briIcon{padding:0;gap:0}
+    .btn.briIcon svg{
+      width:20px;height:20px;
+      stroke:currentColor;
+      fill:none;
+      stroke-width:2;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+      color:rgba(231,238,252,.86);
+    }
     input[type="range"]{
       width:100%;
       accent-color: var(--accent);
@@ -322,9 +337,79 @@
       -webkit-tap-highlight-color: transparent;
     }
     .sheet-close svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+    /* Portrait-only UX: iOS doesn't always honor orientation lock, so we also block usage in landscape. */
+    .orientLock{
+      display:none;
+      position:fixed;
+      inset:0;
+      z-index:10000;
+      padding:18px;
+      background:rgba(0,0,0,.72);
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+    }
+    .orientCard{
+      width:min(420px, 100%);
+      background:rgba(12,16,26,.94);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:22px;
+      box-shadow:var(--shadow);
+      padding:16px;
+    }
+    .orientIco{
+      width:52px;height:52px;border-radius:18px;
+      margin:2px auto 12px;
+      display:flex;align-items:center;justify-content:center;
+      background:rgba(90,168,255,.12);
+      border:1px solid rgba(90,168,255,.28);
+      color:rgba(231,238,252,.90);
+    }
+    .orientIco svg{width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    .orientTitle{font-weight:900;letter-spacing:.2px}
+    .orientSub{margin-top:6px;font-size:13px;color:var(--muted);line-height:1.35}
+    @media (orientation: landscape){
+      .wrap{display:none}
+      .orientLock{display:flex}
+    }
+
+    /* Compact layout for mobile screens (reduce need for scrolling) */
+    @media (max-width: 520px) and (max-height: 920px) {
+      :root{ --tap:48px; }
+      header{ margin-bottom:10px; }
+      .wrap{ padding: calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 2px); }
+      .card{ padding:12px; margin:10px 0; }
+      .row{ margin:10px 0 4px; }
+      .bri{ margin-top:8px; }
+    }
+    @media (max-width: 520px) and (max-height: 760px) {
+      :root{ --tap:44px; }
+      header{ margin-bottom:8px; }
+      .title h1{ font-size:18px; }
+      .pill{ padding:8px 10px; }
+      .iconbtn{ width:34px; height:34px; }
+      .card{ padding:11px; margin:8px 0; }
+      .row{ margin:8px 0 4px; }
+      .bri{ margin-top:8px; }
+    }
   </style>
 </head>
 <body>
+  <div class="orientLock" aria-hidden="true">
+    <div class="orientCard">
+      <div class="orientIco" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M8 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+          <path d="M12 17h.01"/>
+          <path d="M4 9l-2 3 2 3"/>
+          <path d="M20 15l2-3-2-3"/>
+        </svg>
+      </div>
+      <div class="orientTitle">Portrait only</div>
+      <div class="orientSub">Rotate your device back to portrait to use Bedside Remote.</div>
+    </div>
+  </div>
   <div class="wrap">
     <header>
       <div class="title">
@@ -375,28 +460,24 @@
       <div class="grid2">
         <div class="btn twoline" id="btnSideFull">
           <span class="main">
-            <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M8 8l4-4 4 4"/><path d="M8 16l4 4 4-4"/></svg></span>
             <span class="t1">Side</span>
           </span>
           <span class="t2">Full</span>
         </div>
         <div class="btn twoline" id="btnTopFull">
           <span class="main">
-            <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M8 8l-4 4 4 4"/><path d="M16 8l4 4-4 4"/></svg></span>
             <span class="t1">Top</span>
           </span>
           <span class="t2">Full</span>
         </div>
         <div class="btn twoline" id="btnSide">
           <span class="main">
-            <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M8 8l4-4 4 4"/><path d="M8 16l4 4 4-4"/></svg></span>
             <span class="t1">Side</span>
           </span>
           <span class="t2">Saved Preference</span>
         </div>
         <div class="btn twoline" id="btnTop">
           <span class="main">
-            <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M8 8l-4 4 4 4"/><path d="M16 8l4 4-4 4"/></svg></span>
             <span class="t1">Top</span>
           </span>
           <span class="t2">Saved Preference</span>
@@ -408,9 +489,13 @@
         <div class="hint"><span class="mono" id="briVal">—</span></div>
       </div>
       <div class="bri">
-        <div class="btn ghost" id="btnBriDown" aria-label="Brightness down">−</div>
+        <div class="btn briIcon" id="btnBriDown" aria-label="Brightness down">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>
+        </div>
         <input type="range" min="0" max="255" value="128" id="briSlider">
-        <div class="btn ghost" id="btnBriUp" aria-label="Brightness up">+</div>
+        <div class="btn briIcon" id="btnBriUp" aria-label="Brightness up">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        </div>
       </div>
 
       <div class="row">
@@ -588,6 +673,10 @@
     const LS_STEP_PREFIX = "bedsideRemote.step.";
     const LS_PERSIST_KEY = "bedsideRemote.persistBootPreset";
     const LS_LASTWHITE_PREFIX = "bedsideRemote.lastWhite.";
+    const DEVICE_STORE_FILE = "/bedside-remote.json";
+    const DEVICE_STORE_VERSION = 1;
+    const DEFAULT_BOOT_PRESET_ID = 1;
+    const DEFAULT_BOOT_PRESET_NAME = "Bedside Boot";
     let selectedKey = localStorage.getItem(LS_KEY) || "daniel";
     let selectedModeBySide = {
       daniel: localStorage.getItem(LS_MODE_PREFIX + "daniel") || "side",
@@ -604,6 +693,7 @@
     let bootPresetId = null;
     let bootPresetName = null;
     let persistTimer = null;
+    let deviceStoreTimer = null;
     let suppressColorFromStateUntil = 0;
 
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -874,6 +964,38 @@
       ui.btnSideFull.classList.toggle("sel", mode === "side" && !saved);
     }
 
+    function inferModeFromSeg(sideKey, seg) {
+      const cfg = DEVICE.segments[sideKey];
+      if (!cfg || !seg) return null;
+      if (seg.fx !== cfg.fx) return null; // only infer mode for our Lightbar effects
+      if (typeof seg.c1 !== "number" || typeof seg.c2 !== "number") return null;
+
+      const len = cfg.len ?? 1;
+      const cLo = Math.min(seg.c1, seg.c2);
+      const cHi = Math.max(seg.c1, seg.c2);
+
+      const modes = ["side", "top"];
+      let best = null; // { mode, idx, score }
+      for (const mode of modes) {
+        const list = STEP_LISTS?.[sideKey]?.[mode] || [];
+        for (let i = 0; i < list.length; i++) {
+          const [lo, hi] = list[i];
+          const e1 = encIdx(lo, len);
+          const e2 = encIdx(hi, len);
+          const eLo = Math.min(e1, e2);
+          const eHi = Math.max(e1, e2);
+          const score = Math.abs(eLo - cLo) + Math.abs(eHi - cHi);
+          if (!best || score < best.score) best = { mode, idx: i, score };
+          if (best.score === 0) break; // cannot do better for this mode
+        }
+        if (best && best.score === 0) break; // perfect match overall
+      }
+
+      // Only accept very close matches; prevents mode "snapping" if c1/c2 were set externally.
+      if (!best || best.score > 2) return null;
+      return best;
+    }
+
     function isFullVariant(sideKey) {
       return (modeVariantBySide[sideKey] || "saved") === "full";
     }
@@ -928,6 +1050,15 @@
       const sSel = selected();
       const segSel = getSegFromState(state, sSel.id);
       if (!segSel) return;
+
+      // If the current c1/c2 matches one of our canonical step lists, keep Mode UI in sync.
+      // This prevents "Side" / "Top" from getting out of sync when state changes outside this remote.
+      const inf = inferModeFromSeg(selectedKey, segSel);
+      if (inf && inf.mode && inf.mode !== modeKeyForSide(selectedKey)) {
+        setModeForSide(selectedKey, inf.mode);
+        writeStepIndex(selectedKey, inf.mode, inf.idx);
+        reflectModeUIForSelected();
+      }
 
       const now = Date.now();
       const allowTuningFromState = now >= suppressTuningFromStateUntil;
@@ -1015,7 +1146,9 @@
         if (typeof bps === "number" && bps > 0 && bps < 251) bootPresetId = bps;
       } catch {}
 
-      if (!bootPresetId) return;
+      // If boot preset isn't configured, we'll still support persistence by using a default preset ID
+      // and setting bootps when the user enables "Persist on device".
+      if (!bootPresetId) bootPresetId = DEFAULT_BOOT_PRESET_ID;
 
       try {
         const res = await fetch("/presets.json", { cache: "no-store" });
@@ -1030,10 +1163,91 @@
       return !!ui.persistChk?.checked && !!bootPresetId;
     }
 
+    function buildDeviceStoreObj() {
+      const store = {
+        v: DEVICE_STORE_VERSION,
+        t: Date.now(),
+        mode: { daniel: modeKeyForSide("daniel"), gabi: modeKeyForSide("gabi") },
+        modeVar: {
+          daniel: (modeVariantBySide.daniel || "saved"),
+          gabi:   (modeVariantBySide.gabi   || "saved"),
+        },
+        lastWhite: {
+          daniel: (localStorage.getItem(lastWhiteKey("daniel")) || null),
+          gabi:   (localStorage.getItem(lastWhiteKey("gabi"))   || null),
+        },
+        mem: {
+          daniel: { side: readMem("daniel","side"), top: readMem("daniel","top") },
+          gabi:   { side: readMem("gabi","side"),   top: readMem("gabi","top")   },
+        },
+        step: {
+          daniel: { side: readStepIndex("daniel","side"), top: readStepIndex("daniel","top") },
+          gabi:   { side: readStepIndex("gabi","side"),   top: readStepIndex("gabi","top")   },
+        }
+      };
+      return store;
+    }
+
+    function applyDeviceStoreObj(obj) {
+      if (!obj || typeof obj !== "object") return;
+      if (obj.v !== DEVICE_STORE_VERSION) return;
+
+      // Restore per-side mode and variant (used by the UI)
+      if (obj.mode && typeof obj.mode === "object") {
+        if (obj.mode.daniel === "side" || obj.mode.daniel === "top") setModeForSide("daniel", obj.mode.daniel);
+        if (obj.mode.gabi === "side" || obj.mode.gabi === "top") setModeForSide("gabi", obj.mode.gabi);
+      }
+      if (obj.modeVar && typeof obj.modeVar === "object") {
+        if (obj.modeVar.daniel) setModeVariantForSide("daniel", obj.modeVar.daniel);
+        if (obj.modeVar.gabi)   setModeVariantForSide("gabi",   obj.modeVar.gabi);
+      }
+
+      // Restore last white-track color per side (used for Warmer/Colder behavior)
+      if (obj.lastWhite && typeof obj.lastWhite === "object") {
+        if (typeof obj.lastWhite.daniel === "string") localStorage.setItem(lastWhiteKey("daniel"), obj.lastWhite.daniel);
+        if (typeof obj.lastWhite.gabi === "string")   localStorage.setItem(lastWhiteKey("gabi"),   obj.lastWhite.gabi);
+      }
+
+      // Restore per-side/per-mode remembered windows and step indices
+      const sides = ["daniel","gabi"];
+      const modes = ["side","top"];
+      for (const sk of sides) {
+        for (const mk of modes) {
+          const m = obj?.mem?.[sk]?.[mk];
+          if (m && typeof m === "object" && typeof m.c1 === "number" && typeof m.c2 === "number") {
+            writeMem(sk, mk, { c1: m.c1, c2: m.c2 });
+          }
+          const si = obj?.step?.[sk]?.[mk];
+          if (typeof si === "number" && Number.isFinite(si)) writeStepIndex(sk, mk, si);
+        }
+      }
+    }
+
+    async function loadDeviceStore() {
+      try {
+        const res = await fetch(DEVICE_STORE_FILE, { cache: "no-store" });
+        if (!res.ok) return;
+        const obj = await res.json();
+        applyDeviceStoreObj(obj);
+      } catch {}
+    }
+
+    async function persistDeviceStoreNow() {
+      if (!persistEnabled()) return;
+      try {
+        const obj = buildDeviceStoreObj();
+        const fd = new FormData();
+        fd.append("file", new Blob([JSON.stringify(obj)], { type: "application/json" }), DEVICE_STORE_FILE.replace("/",""));
+        const res = await fetch("/upload", { method: "POST", body: fd });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      } catch {}
+    }
+
     async function persistToBootPresetNow() {
       if (!persistEnabled()) return;
-      const payload = { psave: bootPresetId, ib: 1, sb: 1 };
-      if (bootPresetName) payload.n = bootPresetName;
+      // Ensure boot preset is configured so settings survive reboots/firmware updates.
+      const payload = { psave: bootPresetId, bootps: bootPresetId, ib: 1, sb: 1 };
+      payload.n = bootPresetName || DEFAULT_BOOT_PRESET_NAME;
       await postJson(payload);
     }
 
@@ -1047,6 +1261,17 @@
           // If user is currently changing something, postpone.
           if (busy) { schedulePersistToBootPreset(); return; }
           await persistToBootPresetNow();
+        } catch {}
+      }, 1500);
+    }
+
+    function schedulePersistDeviceStore() {
+      if (!persistEnabled()) return;
+      if (deviceStoreTimer) clearTimeout(deviceStoreTimer);
+      deviceStoreTimer = setTimeout(async () => {
+        try {
+          if (busy) { schedulePersistDeviceStore(); return; }
+          await persistDeviceStoreNow();
         } catch {}
       }, 1500);
     }
@@ -1065,7 +1290,10 @@
       await pollOnce();
       // Keep per-mode memory updated for the selected side, based on the current selected mode.
       if (opts.remember !== false && !isFullVariant(selectedKey)) rememberCurrentForSideMode(selectedKey, modeKeyForSide(selectedKey));
-      if (opts.persist !== false && !isFullVariant(selectedKey)) schedulePersistToBootPreset();
+      if (opts.persist !== false && !isFullVariant(selectedKey)) {
+        schedulePersistToBootPreset();
+        schedulePersistDeviceStore();
+      }
     }
 
     function currentTuning() {
@@ -1356,14 +1584,20 @@
     ui.persistChk.checked = (localStorage.getItem(LS_PERSIST_KEY) ?? "1") !== "0";
     ui.persistChk.addEventListener("change", () => {
       localStorage.setItem(LS_PERSIST_KEY, ui.persistChk.checked ? "1" : "0");
-      if (ui.persistChk.checked) schedulePersistToBootPreset();
+      if (ui.persistChk.checked) {
+        schedulePersistToBootPreset();
+        schedulePersistDeviceStore();
+      }
     });
 
     // Start
-    setSelected(selectedKey in DEVICE.segments ? selectedKey : "daniel");
-    setSwatch(ui.colorPick.value);
-    initBootPresetInfo();
-    startPolling();
+    (async () => {
+      await loadDeviceStore();
+      await initBootPresetInfo();
+      setSelected(selectedKey in DEVICE.segments ? selectedKey : "daniel");
+      setSwatch(ui.colorPick.value);
+      startPolling();
+    })();
   })();
   </script>
 </body>

@@ -1,0 +1,10 @@
+{
+  "name": "Bedside Remote",
+  "short_name": "Bedside",
+  "start_url": "/remote-control",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#070a10",
+  "theme_color": "#0b0f18"
+}
