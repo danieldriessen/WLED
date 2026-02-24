@@ -90,13 +90,20 @@
       width:36px;height:36px;border-radius:999px;
       display:flex;align-items:center;justify-content:center;
       border:1px solid var(--line);
-      background:rgba(255,255,255,.05);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+      background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(0,0,0,.12));
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.10),
+        0 10px 22px rgba(0,0,0,.35);
       color:rgba(231,238,252,.86);
       user-select:none;
       -webkit-tap-highlight-color: transparent;
     }
-    .iconbtn:active{transform:scale(.98)}
+    .iconbtn:hover{border-color:rgba(90,168,255,.35)}
+    .iconbtn:active{transform:scale(.97)}
+    .iconbtn:focus-visible{
+      outline:2px solid rgba(90,168,255,.55);
+      outline-offset:2px;
+    }
     .iconbtn svg{width:18px;height:18px;fill:currentColor;stroke:none}
     .dot{width:8px;height:8px;border-radius:50%;background:var(--danger)}
     .dot.ok{background:var(--accent2)}
