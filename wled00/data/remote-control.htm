@@ -60,10 +60,11 @@
       -webkit-overflow-scrolling: touch;
       padding: calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 26px);
     }
-    header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
     .title{display:flex;flex-direction:column;gap:4px}
     .title h1{margin:0;font-size:20px;letter-spacing:.2px}
     .title .sub{font-size:13px;color:var(--muted);line-height:1.35}
+    .hdr-right{display:flex;align-items:center;gap:10px}
     .pill{
       display:inline-flex;align-items:center;gap:8px;
       padding:10px 12px;border-radius:999px;
@@ -71,6 +72,18 @@
       box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
       font-size:12px;color:var(--muted);white-space:nowrap
     }
+    .iconbtn{
+      width:40px;height:40px;border-radius:999px;
+      display:flex;align-items:center;justify-content:center;
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.22);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+      color:var(--muted);
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .iconbtn:active{transform:scale(.99)}
+    .iconbtn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
     .dot{width:8px;height:8px;border-radius:50%;background:var(--danger)}
     .dot.ok{background:var(--accent2)}
     .dot.warn{background:var(--warn)}
@@ -306,9 +319,17 @@
       <div class="title">
         <h1>Bedside Remote</h1>
       </div>
-      <div class="pill" id="connPill" aria-live="polite">
-        <span class="dot" id="connDot"></span>
-        <span id="connText">Connecting…</span>
+      <div class="hdr-right">
+        <div class="pill" id="connPill" aria-live="polite">
+          <span class="dot" id="connDot"></span>
+          <span id="connText">Connecting…</span>
+        </div>
+        <div class="iconbtn" id="btnAdvanced" role="button" tabindex="0" aria-label="Advanced">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>
+            <path d="M19.4 15a1.8 1.8 0 0 0 .3 2l.1.1a2.1 2.1 0 0 1-1.5 3.6h-.2a1.8 1.8 0 0 0-1.7 1.3 2.1 2.1 0 0 1-4 0 1.8 1.8 0 0 0-1.7-1.3h-.2a2.1 2.1 0 0 1-1.5-3.6l.1-.1a1.8 1.8 0 0 0 .3-2 1.8 1.8 0 0 0-1.6-1H6a2.1 2.1 0 0 1 0-4h.1a1.8 1.8 0 0 0 1.6-1 1.8 1.8 0 0 0-.3-2l-.1-.1A2.1 2.1 0 0 1 8.8 4.3H9a1.8 1.8 0 0 0 1.7-1.3 2.1 2.1 0 0 1 4 0A1.8 1.8 0 0 0 16.4 4.3h.2a2.1 2.1 0 0 1 1.5 3.6l-.1.1a1.8 1.8 0 0 0-.3 2 1.8 1.8 0 0 0 1.6 1H18a2.1 2.1 0 0 1 0 4h-.1a1.8 1.8 0 0 0-1.6 1z"/>
+          </svg>
+        </div>
       </div>
     </header>
 
@@ -413,9 +434,6 @@
       </div>
     </div>
 
-    <div class="card">
-      <div class="btn" id="btnAdvanced">Advanced</div>
-    </div>
   </div>
 
   <div class="modal" id="advModal" hidden aria-hidden="true">
@@ -1310,6 +1328,7 @@
     });
 
     ui.btnAdvanced.addEventListener("click", openAdvanced);
+    ui.btnAdvanced.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") openAdvanced(); });
     ui.advBackdrop.addEventListener("click", closeAdvanced);
     ui.advClose.addEventListener("click", closeAdvanced);
     ui.advClose.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") closeAdvanced(); });
