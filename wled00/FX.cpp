@@ -169,6 +169,7 @@ namespace {
     uint16_t gFar;
     uint16_t gTargetNear;
     uint16_t gTargetFar;
+    bool     switchReverse; // special-case: reverse the normal SWITCH transition
 
     // OFF animation helpers
     uint16_t offStartNear;
@@ -217,6 +218,7 @@ namespace {
       st->magic = LIGHTBAR_MAGIC;
       st->phase = LB_OFF;
       st->lastDesired = false; // ensures desired=true starts with ON animation
+      st->switchReverse = false;
       st->lastUpdate = strip.now;
     }
 
@@ -268,6 +270,10 @@ namespace {
       } else if (desiredPower) {
         // While ON, detect target changes and animate smoothly.
         if (gTargetNear != st->gTargetNear || gTargetFar != st->gTargetFar) {
+          // Special-case: when switching "downward" (both bounds move toward ground together),
+          // run the reverse of the normal Side→Top transition. This matches desired behavior
+          // for Top→Side switches in your bedside setup.
+          st->switchReverse = (gTargetNear < st->gTargetNear) && (gTargetFar < st->gTargetFar);
           st->gTargetNear = gTargetNear;
           st->gTargetFar  = gTargetFar;
           if (st->phase == LB_ON_STEADY) st->phase = LB_SWITCH;
@@ -329,29 +335,53 @@ namespace {
             break;
 
           case LB_SWITCH: {
-            // Expand/shrink from far end, retract/expand from ground end.
-            if (st->gFar < st->gTargetFar) {
-              st->gFar = MIN(st->gFar + stepExp, st->gTargetFar);
-            } else if (st->gFar > st->gTargetFar) {
-              st->gFar = (st->gFar > stepRet) ? (st->gFar - stepRet) : 0;
-              if (st->gFar < st->gTargetFar) st->gFar = st->gTargetFar;
-            }
-
-            if (st->gNear < st->gTargetNear) {
-              // Early overlap: if we are expanding gFar, start retracting gNear once close to target.
-              const bool needExpandFar = (st->gFar < st->gTargetFar);
-              const uint16_t overlapStart = (st->gTargetFar > earlyRetract) ? (st->gTargetFar - earlyRetract) : 0;
-              if (!needExpandFar || st->gFar >= overlapStart) {
-                st->gNear = MIN(st->gNear + stepRet, st->gTargetNear);
+            if (st->switchReverse && st->gTargetNear < st->gNear && st->gTargetFar < st->gFar) {
+              // Reverse of the normal SWITCH:
+              // expand toward ground (move gNear first), then retract from the far end.
+              if (st->gNear > st->gTargetNear) {
+                st->gNear = (st->gNear > stepExp) ? (st->gNear - stepExp) : 0;
+                if (st->gNear < st->gTargetNear) st->gNear = st->gTargetNear;
               }
-            } else if (st->gNear > st->gTargetNear) {
-              // Expand toward ground (adding pixels near ground)
-              st->gNear = (st->gNear > stepExp) ? (st->gNear - stepExp) : 0;
-              if (st->gNear < st->gTargetNear) st->gNear = st->gTargetNear;
+
+              if (st->gFar > st->gTargetFar) {
+                // Early overlap: once we have expanded gNear close enough to its target,
+                // begin retracting gFar simultaneously.
+                const bool needExpandNear = (st->gNear > st->gTargetNear);
+                const uint16_t overlapStart = st->gTargetNear + earlyRetract;
+                if (!needExpandNear || st->gNear <= overlapStart) {
+                  st->gFar = (st->gFar > stepRet) ? (st->gFar - stepRet) : 0;
+                  if (st->gFar < st->gTargetFar) st->gFar = st->gTargetFar;
+                }
+              }
+            } else {
+              // Default SWITCH:
+              // expand/shrink from far end, retract/expand from ground end.
+              if (st->gFar < st->gTargetFar) {
+                st->gFar = MIN(st->gFar + stepExp, st->gTargetFar);
+              } else if (st->gFar > st->gTargetFar) {
+                st->gFar = (st->gFar > stepRet) ? (st->gFar - stepRet) : 0;
+                if (st->gFar < st->gTargetFar) st->gFar = st->gTargetFar;
+              }
+
+              if (st->gNear < st->gTargetNear) {
+                // Early overlap: if we are expanding gFar, start retracting gNear once close to target.
+                const bool needExpandFar = (st->gFar < st->gTargetFar);
+                const uint16_t overlapStart = (st->gTargetFar > earlyRetract) ? (st->gTargetFar - earlyRetract) : 0;
+                if (!needExpandFar || st->gFar >= overlapStart) {
+                  st->gNear = MIN(st->gNear + stepRet, st->gTargetNear);
+                }
+              } else if (st->gNear > st->gTargetNear) {
+                // Expand toward ground (adding pixels near ground)
+                st->gNear = (st->gNear > stepExp) ? (st->gNear - stepExp) : 0;
+                if (st->gNear < st->gTargetNear) st->gNear = st->gTargetNear;
+              }
             }
 
             if (st->gNear > st->gFar) st->gNear = st->gFar;
-            if (st->gNear == st->gTargetNear && st->gFar == st->gTargetFar) st->phase = LB_ON_STEADY;
+            if (st->gNear == st->gTargetNear && st->gFar == st->gTargetFar) {
+              st->phase = LB_ON_STEADY;
+              st->switchReverse = false;
+            }
             break;
           }
 
