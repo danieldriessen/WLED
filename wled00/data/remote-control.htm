@@ -45,9 +45,9 @@
       inset:0;
       z-index:-1;
       background:
-        radial-gradient(120vmax 90vmax at 20% -10%, rgba(90,168,255,.18), transparent 55%),
-        radial-gradient(95vmax 70vmax at 90% 10%, rgba(124,240,201,.10), transparent 60%),
-        radial-gradient(95vmax 95vmax at 40% 110%, rgba(255,90,123,.08), transparent 55%),
+        radial-gradient(1200px 700px at 20% -10%, rgba(90,168,255,.18), transparent 55%),
+        radial-gradient(900px 600px at 90% 10%, rgba(124,240,201,.10), transparent 60%),
+        radial-gradient(900px 900px at 40% 110%, rgba(255,90,123,.08), transparent 55%),
         linear-gradient(180deg, var(--bg0), var(--bg1));
       background-color: var(--bg0);
     }
@@ -106,12 +106,19 @@
       color:var(--text);
       font-weight:600;
       letter-spacing:.2px;
-      display:flex;align-items:center;justify-content:center;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:3px;
       position:relative;
       transition:transform .06s ease, background .2s ease, border-color .2s ease;
       user-select:none;
       -webkit-tap-highlight-color: transparent;
     }
+    .seg-btn .seg-name{font-weight:800}
+    .seg-btn .seg-state{display:flex;align-items:center;justify-content:center;gap:8px}
+    .seg-btn .pwrstate{font-size:11px}
     .seg-btn:active{transform:scale(.99)}
     .seg-btn.sel{
       background:linear-gradient(180deg, rgba(90,168,255,.28), rgba(90,168,255,.12));
@@ -211,23 +218,6 @@
       font-size:12px;font-weight:700;
     }
 
-    .pwrbar{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-    .pwrpill{
-      height:44px;
-      border-radius:16px;
-      border:1px solid var(--line);
-      background:rgba(0,0,0,.18);
-      display:flex;align-items:center;justify-content:space-between;
-      padding:10px 12px;
-      gap:10px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
-    }
-    .pwrpill.sel{
-      border-color:rgba(90,168,255,.55);
-      background:linear-gradient(180deg, rgba(90,168,255,.18), rgba(0,0,0,.16));
-    }
-    .pwrleft{display:flex;align-items:center;gap:10px;min-width:0}
-    .pwrname{font-weight:900;letter-spacing:.2px}
     .pwrstate{font-size:12px;color:var(--muted);font-weight:800;white-space:nowrap}
     .pwrdot{width:10px;height:10px;border-radius:50%;background:var(--danger);flex:0 0 auto}
     .pwrdot.on{background:var(--accent2)}
@@ -335,24 +325,19 @@
 
     <div class="card">
       <div class="seg-toggle" role="tablist" aria-label="Select bedside">
-        <div class="seg-btn" id="btnDaniel" role="tab" tabindex="0">Daniel</div>
-        <div class="seg-btn" id="btnGabi" role="tab" tabindex="0">Gabriela</div>
-      </div>
-
-      <div class="pwrbar" aria-label="Bedside status">
-        <div class="pwrpill" id="pwrDaniel">
-          <div class="pwrleft">
+        <div class="seg-btn" id="btnDaniel" role="tab" tabindex="0">
+          <div class="seg-name">Daniel</div>
+          <div class="seg-state">
             <span class="pwrdot" id="pwrDanielDot" aria-hidden="true"></span>
-            <span class="pwrname">Daniel</span>
+            <span class="pwrstate" id="pwrDanielState">—</span>
           </div>
-          <span class="pwrstate" id="pwrDanielState">—</span>
         </div>
-        <div class="pwrpill" id="pwrGabi">
-          <div class="pwrleft">
+        <div class="seg-btn" id="btnGabi" role="tab" tabindex="0">
+          <div class="seg-name">Gabriela</div>
+          <div class="seg-state">
             <span class="pwrdot" id="pwrGabiDot" aria-hidden="true"></span>
-            <span class="pwrname">Gabriela</span>
+            <span class="pwrstate" id="pwrGabiState">—</span>
           </div>
-          <span class="pwrstate" id="pwrGabiState">—</span>
         </div>
       </div>
     </div>
