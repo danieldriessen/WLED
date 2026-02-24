@@ -204,6 +204,14 @@ namespace {
     return 1U + (s >> 6);
   }
 
+  static inline uint16_t lightbar_scaleIntervalByQ8(uint16_t baseMs, uint16_t mulQ8) {
+    // mulQ8: 256 => 1.0x (no change); 512 => 2.0x faster (half interval)
+    if (mulQ8 <= 256U) return baseMs;
+    uint32_t scaled = (uint32_t(baseMs) * 256U + (mulQ8 / 2U)) / uint32_t(mulQ8);
+    uint16_t ms = uint16_t(scaled);
+    return (ms < MIN_FRAME_DELAY) ? MIN_FRAME_DELAY : ms;
+  }
+
   static void mode_lightbar_common(bool groundAtStart)
   {
     if (SEGLEN <= 1) FX_FALLBACK_STATIC;
@@ -239,6 +247,11 @@ namespace {
     const uint16_t earlyRetract = (SEGMENT.custom3 >= 31)
       ? LIGHTBAR_OVERLAP_MAX_LEDS
       : (uint32_t(SEGMENT.custom3) * LIGHTBAR_OVERLAP_MAX_LEDS) / 31U;
+
+    // Dynamic speed-up based on how far the far bound is away from ground.
+    // This makes ON and Side→Top switches complete in a more consistent time.
+    // Multiplier is stable for a given target (uses gTargetFar).
+    const uint16_t dynMulQ8 = 256U + (uint32_t(gTargetFar) * 256U) / uint32_t(SEGLEN - 1U); // 1.0x..2.0x
 
     // Handle no-animation/debug mode immediately.
     if (noAnim) {
@@ -295,6 +308,15 @@ namespace {
       if (st->phase == LB_ON_RETRACT || st->phase == LB_OFF_FALL || st->phase == LB_OFF_SHRINK) intervalMs = retractMs;
       if (st->phase == LB_SWITCH) intervalMs = MIN(expandMs, retractMs);
       if (st->phase == LB_ON_STEADY) intervalMs = MAX(MIN_FRAME_DELAY, 50);
+
+      // Apply dynamic speed-up for ON and for upward switches (expanding away from ground).
+      // Do not speed up downward-only switches (Top→Side) beyond user-tuned ix/sx.
+      if (st->phase == LB_ON_FILL || st->phase == LB_ON_RETRACT) {
+        intervalMs = lightbar_scaleIntervalByQ8(intervalMs, dynMulQ8);
+      } else if (st->phase == LB_SWITCH) {
+        const bool needExpandFar = (st->gTargetFar > st->gFar);
+        if (needExpandFar) intervalMs = lightbar_scaleIntervalByQ8(intervalMs, dynMulQ8);
+      }
 
       // Progressive speed-up during OFF fall (optional realism).
       if (offRealism && st->phase == LB_OFF_FALL && st->offStartNear > 0) {
