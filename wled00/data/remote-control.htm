@@ -111,21 +111,28 @@
       user-select:none;
       -webkit-tap-highlight-color: transparent;
     }
-    .btn.twoline .lbl{
-      display:flex;
+    .btn.twoline{
       flex-direction:column;
+      gap:3px;
+      line-height:1.05;
+    }
+    .btn.twoline .main{
+      display:flex;
       align-items:center;
       justify-content:center;
-      line-height:1.05;
-      gap:2px;
-      min-width:0;
+      gap:10px;
     }
-    .btn.twoline .lbl .t2{
+    .btn.twoline .t2{
       font-size:11px;
       font-weight:800;
       color:var(--muted);
       letter-spacing:0;
+      width:100%;
+      text-align:center;
       white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      padding:0 8px;
     }
     .ico{
       display:inline-flex;
@@ -347,20 +354,32 @@
       </div>
       <div class="grid2">
         <div class="btn twoline" id="btnSide">
-          <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M8 8l4-4 4 4"/><path d="M8 16l4 4 4-4"/></svg></span>
-          <span class="lbl"><span class="t1">Side</span><span class="t2">Saved Preference</span></span>
+          <span class="main">
+            <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M8 8l4-4 4 4"/><path d="M8 16l4 4 4-4"/></svg></span>
+            <span class="t1">Side</span>
+          </span>
+          <span class="t2">Saved Preference</span>
         </div>
         <div class="btn twoline" id="btnTop">
-          <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M8 8l-4 4 4 4"/><path d="M16 8l4 4-4 4"/></svg></span>
-          <span class="lbl"><span class="t1">Top</span><span class="t2">Saved Preference</span></span>
+          <span class="main">
+            <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M8 8l-4 4 4 4"/><path d="M16 8l4 4-4 4"/></svg></span>
+            <span class="t1">Top</span>
+          </span>
+          <span class="t2">Saved Preference</span>
         </div>
         <div class="btn twoline" id="btnSideFull">
-          <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M8 8l4-4 4 4"/><path d="M8 16l4 4 4-4"/></svg></span>
-          <span class="lbl"><span class="t1">Side</span><span class="t2">Full</span></span>
+          <span class="main">
+            <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M8 8l4-4 4 4"/><path d="M8 16l4 4 4-4"/></svg></span>
+            <span class="t1">Side</span>
+          </span>
+          <span class="t2">Full</span>
         </div>
         <div class="btn twoline" id="btnTopFull">
-          <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M8 8l-4 4 4 4"/><path d="M16 8l4 4-4 4"/></svg></span>
-          <span class="lbl"><span class="t1">Top</span><span class="t2">Full</span></span>
+          <span class="main">
+            <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M8 8l-4 4 4 4"/><path d="M16 8l4 4-4 4"/></svg></span>
+            <span class="t1">Top</span>
+          </span>
+          <span class="t2">Full</span>
         </div>
       </div>
 
