@@ -184,6 +184,16 @@
       padding:10px 0;
     }
     summary::-webkit-details-marker{display:none}
+    .chev{
+      display:inline-block;
+      width:24px;
+      text-align:center;
+      color:var(--muted);
+      transform: rotate(0deg);
+      transition: transform .18s ease, color .18s ease;
+      user-select:none;
+    }
+    details[open] .chev{transform: rotate(90deg); color:var(--text);}
     .adv-grid{display:grid;grid-template-columns:1fr;gap:10px}
     .field{
       background:rgba(0,0,0,.16);
@@ -289,6 +299,7 @@
       <details>
         <summary>
           Advanced
+          <span class="chev" aria-hidden="true">▸</span>
         </summary>
 
         <div class="adv-grid">
