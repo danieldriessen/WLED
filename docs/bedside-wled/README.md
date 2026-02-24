@@ -187,7 +187,8 @@ It provides a Daniel/Gabriela selector and sends the correct per-segment `/json/
 UI notes:
 
 - The **Advanced** button is in its own separate card at the bottom of the page (opens a modal).
-- The **Color** picker button is a full-size color swatch (tap to pick); **Apply** applies only the selected color.
+- The **Color** picker button is a full-size color swatch (tap to pick) and applies immediately when you close the picker (no Apply button).
+- **Warmer/Colder**: if the current color is not on the warm↔cool “white track”, the next press restores the last-used white-track color first, then subsequent presses step.
 
 ### Updating `/remote-control` without reflashing (A)
 

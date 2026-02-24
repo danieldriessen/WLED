@@ -96,6 +96,7 @@
     }
 
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .grid2.colorrow{grid-template-columns:1fr}
     .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
     .btn{
       height:var(--tap);
@@ -374,12 +375,11 @@
       <div class="row">
         <div class="label">Color</div>
       </div>
-      <div class="grid2">
+      <div class="grid2 colorrow">
         <label class="btn small colorbtn" id="colorPickBtn" aria-label="Pick color">
           <span class="swatch" id="colorSwatch" aria-hidden="true"></span>
           <input class="color-input" id="colorPick" type="color" value="#ffa000" aria-label="Pick color">
         </label>
-        <div class="btn small" id="btnColorApply"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>Apply</div>
       </div>
     </div>
 
@@ -519,7 +519,7 @@
       btnMore: $("btnMore"), btnLess: $("btnLess"),
       btnSide: $("btnSide"), btnTop: $("btnTop"), btnSideFull: $("btnSideFull"), btnTopFull: $("btnTopFull"),
       btnWarm: $("btnWarm"), btnCool: $("btnCool"),
-      colorPick: $("colorPick"), colorSwatch: $("colorSwatch"), btnColorApply: $("btnColorApply"),
+      colorPick: $("colorPick"), colorSwatch: $("colorSwatch"),
       btnAdvanced: $("btnAdvanced"),
       advModal: $("advModal"), advBackdrop: $("advBackdrop"), advClose: $("advClose"),
       sxSlider: $("sxSlider"), ixSlider: $("ixSlider"), c3Slider: $("c3Slider"),
@@ -534,6 +534,7 @@
     const LS_MEM_PREFIX  = "bedsideRemote.mem.";
     const LS_STEP_PREFIX = "bedsideRemote.step.";
     const LS_PERSIST_KEY = "bedsideRemote.persistBootPreset";
+    const LS_LASTWHITE_PREFIX = "bedsideRemote.lastWhite.";
     let selectedKey = localStorage.getItem(LS_KEY) || "daniel";
     let selectedModeBySide = {
       daniel: localStorage.getItem(LS_MODE_PREFIX + "daniel") || "side",
@@ -550,6 +551,7 @@
     let bootPresetId = null;
     let bootPresetName = null;
     let persistTimer = null;
+    let suppressColorFromStateUntil = 0;
 
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
     const briToPct = (bri) => `${Math.round(clamp(bri ?? 0, 0, 255) * 100 / 255)} %`;
@@ -674,6 +676,15 @@
       const h = (n) => clamp(n,0,255).toString(16).padStart(2,"0");
       return `#${h(r)}${h(g)}${h(b)}`;
     }
+    function hexToRgb(hex) {
+      const v = String(hex || "").trim().replace("#", "");
+      if (v.length !== 6) return null;
+      const r = parseInt(v.slice(0,2), 16);
+      const g = parseInt(v.slice(2,4), 16);
+      const b = parseInt(v.slice(4,6), 16);
+      if (![r,g,b].every(Number.isFinite)) return null;
+      return [clamp8(r), clamp8(g), clamp8(b), 0];
+    }
     function setSwatch(hex) {
       if (!ui.colorSwatch) return;
       ui.colorSwatch.style.background = hex || "#ffa000";
@@ -690,22 +701,52 @@
       return clamp8(Math.round(a + (b - a) * t01));
     }
 
-    function stepWarmerColder(dir /* -1 colder, +1 warmer */) {
+    const WHITE_REF_WARM = [255,160,0,0];
+    const WHITE_REF_COOL = [170,215,255,0];
+    function distToWhiteTrack(rgb) {
+      // "White track" is the line segment between warm and cool reference whites.
+      // If current color is off-track (e.g. RGB accent), Warmer/Colder should first restore the last white-track color.
+      const ax = WHITE_REF_WARM[0], ay = WHITE_REF_WARM[1], az = WHITE_REF_WARM[2];
+      const bx = WHITE_REF_COOL[0], by = WHITE_REF_COOL[1], bz = WHITE_REF_COOL[2];
+      const px = rgb[0], py = rgb[1], pz = rgb[2];
+      const abx = bx - ax, aby = by - ay, abz = bz - az;
+      const apx = px - ax, apy = py - ay, apz = pz - az;
+      const ab2 = abx*abx + aby*aby + abz*abz;
+      let t = ab2 > 0 ? (apx*abx + apy*aby + apz*abz) / ab2 : 0;
+      if (t < 0) t = 0;
+      if (t > 1) t = 1;
+      const qx = ax + abx*t, qy = ay + aby*t, qz = az + abz*t;
+      const dx = px - qx, dy = py - qy, dz = pz - qz;
+      return Math.sqrt(dx*dx + dy*dy + dz*dz);
+    }
+    function isOnWhiteTrack(rgb) {
+      // Threshold tuned for "close enough" to our warm↔cool axis without false positives for saturated RGB colors.
+      return distToWhiteTrack(rgb) <= 18;
+    }
+    function lastWhiteKey(sideKey) {
+      return `${LS_LASTWHITE_PREFIX}${sideKey}`;
+    }
+    function readLastWhite(sideKey) {
+      const raw = localStorage.getItem(lastWhiteKey(sideKey));
+      return raw ? hexToRgb(raw) : null;
+    }
+    function writeLastWhite(sideKey, rgb) {
+      try { localStorage.setItem(lastWhiteKey(sideKey), rgbToHex(rgb[0], rgb[1], rgb[2])); } catch {}
+    }
+    function maybeTrackWhite(sideKey, rgb) {
+      if (isOnWhiteTrack(rgb)) writeLastWhite(sideKey, rgb);
+    }
+    function stepWarmerColder(dir, cur /* rgb */) {
       // Use a small step towards a warm/cool reference white.
       // This keeps user-chosen brightness and only nudges hue/temperature.
-      const warmRef = [255,160,0,0];
-      const coolRef = [170,215,255,0];
       const step = 0.10; // per-tap blend factor (smaller = finer steps)
-
-      const cur = currentColorOrDefault();
-      const ref = (dir > 0) ? warmRef : coolRef;
-      const out = [
+      const ref = (dir > 0) ? WHITE_REF_WARM : WHITE_REF_COOL;
+      return [
         mix(cur[0], ref[0], step),
         mix(cur[1], ref[1], step),
         mix(cur[2], ref[2], step),
         0
       ];
-      return out;
     }
 
     function snapshotForLightbar(seg) {
@@ -839,6 +880,7 @@
 
       const now = Date.now();
       const allowTuningFromState = now >= suppressTuningFromStateUntil;
+      const allowColorFromState  = allowTuningFromState && now >= suppressColorFromStateUntil;
       const notActive = (el) => document.activeElement !== el;
 
       // Brightness
@@ -861,7 +903,7 @@
       if (allowTuningFromState && notActive(ui.o3Chk)) ui.o3Chk.checked = !!segSel.o3;
 
       // Color picker preview (reflect current segment primary color when idle)
-      if (allowTuningFromState && notActive(ui.colorPick)) {
+      if (allowColorFromState && notActive(ui.colorPick)) {
         const c0 = segPrimaryCol(segSel);
         if (c0) {
           const hex = rgbToHex(c0[0], c0[1], c0[2]);
@@ -1181,14 +1223,23 @@
       const r = parseInt(hex.slice(0,2), 16);
       const g = parseInt(hex.slice(2,4), 16);
       const b = parseInt(hex.slice(4,6), 16);
-      await postState({ id: s.id, col: [[r,g,b,0]] });
+      const rgb = [clamp8(r), clamp8(g), clamp8(b), 0];
+      await postState({ id: s.id, col: [[rgb[0], rgb[1], rgb[2], 0]] });
+      maybeTrackWhite(selectedKey, rgb);
     }
 
     async function nudgeWarmCool(which) {
       if (!lastState) await pollOnce();
       const dir = (which === "warm") ? +1 : -1;
-      const col = stepWarmerColder(dir);
+      const cur = currentColorOrDefault();
+      if (!isOnWhiteTrack(cur)) {
+        const lw = readLastWhite(selectedKey) || WHITE_REF_WARM;
+        await postState({ id: selected().id, col: [lw] });
+        return; // A) first press restores white only, no step
+      }
+      const col = stepWarmerColder(dir, cur);
       await postState({ id: selected().id, col: [col] });
+      maybeTrackWhite(selectedKey, col);
       // visual feedback: momentary highlight will be updated on next poll
     }
 
@@ -1217,8 +1268,16 @@
     ui.btnWarm.addEventListener("click", () => safeAction(() => nudgeWarmCool("warm")));
     ui.btnCool.addEventListener("click", () => safeAction(() => nudgeWarmCool("cool")));
 
-    ui.btnColorApply.addEventListener("click", () => safeAction(() => setColorRGB(ui.colorPick.value)));
-    ui.colorPick.addEventListener("input", () => { setSwatch(ui.colorPick.value); });
+    ui.colorPick.addEventListener("input", () => {
+      // While the iOS color picker is open, polling should not overwrite the chosen value.
+      suppressColorFromStateUntil = Date.now() + 15000;
+      setSwatch(ui.colorPick.value);
+    });
+    // Apply immediately when the picker dialog is closed/confirmed.
+    ui.colorPick.addEventListener("change", () => {
+      suppressColorFromStateUntil = Date.now() + 2000;
+      safeAction(() => setColorRGB(ui.colorPick.value));
+    });
 
     ui.btnAdvanced.addEventListener("click", openAdvanced);
     ui.advBackdrop.addEventListener("click", closeAdvanced);
