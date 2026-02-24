@@ -552,7 +552,6 @@
     const ui = {
       connPill: $("connPill"), connDot: $("connDot"), connText: $("connText"),
       btnDaniel: $("btnDaniel"), btnGabi: $("btnGabi"),
-      pwrDaniel: $("pwrDaniel"), pwrGabi: $("pwrGabi"),
       pwrDanielDot: $("pwrDanielDot"), pwrGabiDot: $("pwrGabiDot"),
       pwrDanielState: $("pwrDanielState"), pwrGabiState: $("pwrGabiState"),
       btnOn: $("btnOn"), btnOff: $("btnOff"),
@@ -882,8 +881,6 @@
       localStorage.setItem(LS_KEY, key);
       ui.btnDaniel.classList.toggle("sel", key === "daniel");
       ui.btnGabi.classList.toggle("sel", key === "gabi");
-      ui.pwrDaniel.classList.toggle("sel", key === "daniel");
-      ui.pwrGabi.classList.toggle("sel", key === "gabi");
       reflectModeUIForSelected();
       renderFromState(lastState);
     }
@@ -955,7 +952,7 @@
         setSwatch(ui.colorPick.value);
       }
 
-      function setPwrUI(sideKey, pillEl, dotEl, stateEl) {
+      function setPwrUI(sideKey, dotEl, stateEl) {
         const cfg = DEVICE.segments[sideKey];
         const seg = getSegFromState(state, cfg.id);
         if (!seg) {
@@ -980,8 +977,8 @@
         stateEl.textContent = label;
       }
 
-      setPwrUI("daniel", ui.pwrDaniel, ui.pwrDanielDot, ui.pwrDanielState);
-      setPwrUI("gabi",   ui.pwrGabi,   ui.pwrGabiDot,   ui.pwrGabiState);
+      setPwrUI("daniel", ui.pwrDanielDot, ui.pwrDanielState);
+      setPwrUI("gabi",   ui.pwrGabiDot,   ui.pwrGabiState);
     }
 
     async function pollOnce() {
