@@ -102,6 +102,23 @@
       user-select:none;
       -webkit-tap-highlight-color: transparent;
     }
+    .ico{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:22px;
+      height:22px;
+      border-radius:999px;
+      background:rgba(0,0,0,.18);
+      border:1px solid var(--line);
+      color:var(--muted);
+      font-weight:900;
+      line-height:1;
+      flex:0 0 auto;
+    }
+    .ico.dot{width:14px;height:14px;border:0}
+    .ico.dot.warm{background:linear-gradient(180deg, rgba(255,190,120,.95), rgba(255,120,0,.92)); box-shadow:0 8px 20px rgba(255,140,0,.18)}
+    .ico.dot.cool{background:linear-gradient(180deg, rgba(190,245,255,.95), rgba(80,170,255,.92)); box-shadow:0 8px 20px rgba(90,168,255,.18)}
     .btn:active{transform:scale(.99)}
     .btn.primary{
       background:linear-gradient(180deg, rgba(124,240,201,.26), rgba(124,240,201,.10));
@@ -168,7 +185,6 @@
     <header>
       <div class="title">
         <h1>Bedside Remote</h1>
-        <div class="sub">Smart remote for your two virtual bedside lamps (on-device animations).</div>
       </div>
       <div class="pill" id="connPill" aria-live="polite">
         <span class="dot" id="connDot"></span>
@@ -180,12 +196,6 @@
       <div class="seg-toggle" role="tablist" aria-label="Select bedside">
         <div class="seg-btn" id="btnDaniel" role="tab" tabindex="0">Daniel</div>
         <div class="seg-btn" id="btnGabi" role="tab" tabindex="0">Gabriela</div>
-      </div>
-      <div style="height:10px"></div>
-      <div class="statusline" id="statusLine">
-        <span>Selected: <b id="selName">—</b></span>
-        <span class="chip" id="lampState">—</span>
-        <span class="chip mono" id="segMeta">seg —</span>
       </div>
     </div>
 
@@ -201,40 +211,36 @@
       </div>
       <div class="bri">
         <div class="btn ghost" id="btnBriDown" aria-label="Brightness down">−</div>
-        <input type="range" min="1" max="255" value="128" id="briSlider">
+        <input type="range" min="0" max="255" value="128" id="briSlider">
         <div class="btn ghost" id="btnBriUp" aria-label="Brightness up">+</div>
       </div>
 
       <div class="row">
         <div class="label">Size</div>
-        <div class="hint">More/less LEDs (toward/away from ground)</div>
       </div>
       <div class="grid2">
-        <div class="btn" id="btnLess">Less LEDs</div>
-        <div class="btn" id="btnMore">More LEDs</div>
+        <div class="btn" id="btnLess"><span class="ico" aria-hidden="true">−</span>Less LEDs</div>
+        <div class="btn" id="btnMore"><span class="ico" aria-hidden="true">+</span>More LEDs</div>
       </div>
 
       <div class="row">
         <div class="label">Mode</div>
-        <div class="hint">Quick target windows</div>
       </div>
       <div class="grid2">
-        <div class="btn" id="btnSide">Side</div>
-        <div class="btn" id="btnTop">Top</div>
+        <div class="btn" id="btnSide"><span class="ico" aria-hidden="true">↔</span>Side</div>
+        <div class="btn" id="btnTop"><span class="ico" aria-hidden="true">↕</span>Top</div>
       </div>
 
       <div class="row">
         <div class="label">White</div>
-        <div class="hint">Warm/cool</div>
       </div>
       <div class="grid2">
-        <div class="btn" id="btnWarm">Warm</div>
-        <div class="btn" id="btnCool">Cool</div>
+        <div class="btn" id="btnWarm"><span class="ico dot warm" aria-hidden="true"></span>Warmer</div>
+        <div class="btn" id="btnCool"><span class="ico dot cool" aria-hidden="true"></span>Colder</div>
       </div>
 
       <div class="row">
         <div class="label">Color</div>
-        <div class="hint">Optional RGB (keeps effect)</div>
       </div>
       <div class="grid2">
         <input class="btn small" id="colorPick" type="color" value="#ffa000" aria-label="Pick color">
@@ -244,7 +250,6 @@
       <details>
         <summary>
           Advanced
-          <span class="chip">tuning</span>
         </summary>
 
         <div class="adv-grid">
@@ -348,7 +353,6 @@
     const ui = {
       connPill: $("connPill"), connDot: $("connDot"), connText: $("connText"),
       btnDaniel: $("btnDaniel"), btnGabi: $("btnGabi"),
-      selName: $("selName"), lampState: $("lampState"), segMeta: $("segMeta"),
       btnOn: $("btnOn"), btnOff: $("btnOff"),
       btnBriDown: $("btnBriDown"), btnBriUp: $("btnBriUp"), briSlider: $("briSlider"), briVal: $("briVal"),
       btnMore: $("btnMore"), btnLess: $("btnLess"),
@@ -362,12 +366,21 @@
     };
 
     const LS_KEY = "bedsideRemote.selected";
+    const LS_MODE_PREFIX = "bedsideRemote.mode.";
+    const LS_MEM_PREFIX  = "bedsideRemote.mem.";
+    const LS_STEP_PREFIX = "bedsideRemote.step.";
     let selectedKey = localStorage.getItem(LS_KEY) || "daniel";
+    let selectedModeBySide = {
+      daniel: localStorage.getItem(LS_MODE_PREFIX + "daniel") || "side",
+      gabi:   localStorage.getItem(LS_MODE_PREFIX + "gabi")   || "side",
+    };
     let lastState = null;
     let pollTimer = null;
     let busy = false;
+    let suppressTuningFromStateUntil = 0;
 
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const briToPct = (bri) => `${Math.round(clamp(bri ?? 0, 0, 255) * 100 / 255)} %`;
     const encIdx = (idx, len) => {
       if (len <= 1) return 0;
       return Math.round(idx * 255 / (len - 1));
@@ -376,19 +389,225 @@
       if (len <= 1) return 0;
       return Math.round(u8 * (len - 1) / 255);
     };
-    const toG = (localIdx, len, groundAtStart) => groundAtStart ? localIdx : (len - 1 - localIdx);
-    const fromG = (g, len, groundAtStart) => groundAtStart ? g : (len - 1 - g);
+
+    // Canonical "More/Less LEDs" behavior:
+    // step through a fixed ordered list of inclusive ranges per side+mode (with wrap-around).
+    function genPhaseSym(a0, b0, steps) {
+      const out = [];
+      for (let k = 0; k < steps; k++) out.push([a0 - k, b0 + k]);
+      return out;
+    }
+    function genPhaseFixedHi(hi, aStart, aEndInclusive) {
+      const out = [];
+      for (let a = aStart; a >= aEndInclusive; a--) out.push([a, hi]);
+      return out;
+    }
+    function genPhaseFixedLo(lo, bStart, bEndInclusive) {
+      const out = [];
+      for (let b = bStart; b <= bEndInclusive; b++) out.push([lo, b]);
+      return out;
+    }
+    function toLocalRanges(rangesGlobal, sideKey) {
+      const off = (sideKey === "gabi") ? 131 : 0;
+      const len = DEVICE.segments[sideKey].len;
+      return rangesGlobal.map(([a, b]) => {
+        const lo = clamp(a - off, 0, len - 1);
+        const hi = clamp(b - off, 0, len - 1);
+        return [Math.min(lo, hi), Math.max(lo, hi)];
+      });
+    }
+    const STEP_LISTS = (() => {
+      // Global step lists (inclusive indices). These match the canonical spec in your prompt.
+      const rightSideGlobal = [
+        ...genPhaseSym(23, 31, 9),
+        ...genPhaseFixedLo(15, 40, 77),
+      ];
+      const rightTopGlobal = [
+        ...genPhaseSym(108, 116, 15),
+        ...genPhaseFixedHi(130, 93, 78),
+      ];
+      const leftSideGlobal = [
+        ...genPhaseSym(230, 238, 9),
+        ...genPhaseFixedHi(246, 221, 184),
+      ];
+      const leftTopGlobal = [
+        ...genPhaseSym(145, 153, 15),
+        ...genPhaseFixedLo(131, 168, 183),
+      ];
+
+      return {
+        daniel: {
+          side: toLocalRanges(rightSideGlobal, "daniel"),
+          top:  toLocalRanges(rightTopGlobal,  "daniel"),
+        },
+        gabi: {
+          side: toLocalRanges(leftSideGlobal, "gabi"),
+          top:  toLocalRanges(leftTopGlobal,  "gabi"),
+        }
+      };
+    })();
 
     function selected() {
       return DEVICE.segments[selectedKey];
     }
+
+    function modeKeyForSide(sideKey) {
+      return selectedModeBySide[sideKey] || "side";
+    }
+
+    function setModeForSide(sideKey, mode) {
+      selectedModeBySide[sideKey] = mode;
+      localStorage.setItem(LS_MODE_PREFIX + sideKey, mode);
+    }
+
+    function memKey(sideKey, mode) {
+      return `${LS_MEM_PREFIX}${sideKey}.${mode}`;
+    }
+    function stepKey(sideKey, mode) {
+      return `${LS_STEP_PREFIX}${sideKey}.${mode}`;
+    }
+
+    function readMem(sideKey, mode) {
+      try {
+        const raw = localStorage.getItem(memKey(sideKey, mode));
+        return raw ? JSON.parse(raw) : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function writeMem(sideKey, mode, obj) {
+      try {
+        localStorage.setItem(memKey(sideKey, mode), JSON.stringify(obj));
+      } catch {
+        // ignore quota / serialization errors
+      }
+    }
+    function readStepIndex(sideKey, mode) {
+      const raw = localStorage.getItem(stepKey(sideKey, mode));
+      const n = raw == null ? NaN : parseInt(raw, 10);
+      return Number.isFinite(n) ? n : null;
+    }
+    function writeStepIndex(sideKey, mode, idx) {
+      try { localStorage.setItem(stepKey(sideKey, mode), String(idx)); } catch {}
+    }
+
+    function segPrimaryCol(seg) {
+      const c = seg?.col?.[0];
+      if (!Array.isArray(c) || c.length < 3) return null;
+      return [c[0] ?? 0, c[1] ?? 0, c[2] ?? 0, c[3] ?? 0].map(v => clamp(parseInt(v, 10) || 0, 0, 255));
+    }
+
+    function currentColorOrDefault() {
+      const seg = getSegFromState(lastState, selected().id);
+      return segPrimaryCol(seg) || [255,160,0,0];
+    }
+
+    function clamp8(v) { return clamp(v|0, 0, 255); }
+
+    function mix(a, b, t01) {
+      return clamp8(Math.round(a + (b - a) * t01));
+    }
+
+    function stepWarmerColder(dir /* -1 colder, +1 warmer */) {
+      // Use a small step towards a warm/cool reference white.
+      // This keeps user-chosen brightness and only nudges hue/temperature.
+      const warmRef = [255,160,0,0];
+      const coolRef = [170,215,255,0];
+      const step = 0.18; // per-tap blend factor
+
+      const cur = currentColorOrDefault();
+      const ref = (dir > 0) ? warmRef : coolRef;
+      const out = [
+        mix(cur[0], ref[0], step),
+        mix(cur[1], ref[1], step),
+        mix(cur[2], ref[2], step),
+        0
+      ];
+      return out;
+    }
+
+    function snapshotForLightbar(seg) {
+      if (!seg) return null;
+      if (typeof seg.c1 !== "number" || typeof seg.c2 !== "number") return null;
+      const col0 = segPrimaryCol(seg);
+      return {
+        bri: typeof seg.bri === "number" ? clamp(seg.bri, 1, 255) : null,
+        col: col0,
+        c1: seg.c1,
+        c2: seg.c2,
+      };
+    }
+
+    function currentRangeLocalForSideMode(sideKey, mode) {
+      const segId = DEVICE.segments[sideKey]?.id;
+      const fxId  = DEVICE.segments[sideKey]?.fx;
+      const len   = DEVICE.segments[sideKey]?.len ?? 1;
+      const list  = STEP_LISTS?.[sideKey]?.[mode] || [];
+
+      const seg = getSegFromState(lastState, segId);
+      if (seg && seg.fx === fxId && typeof seg.c1 === "number" && typeof seg.c2 === "number") {
+        const a = decIdx(seg.c1, len);
+        const b = decIdx(seg.c2, len);
+        return { lo: Math.min(a,b), hi: Math.max(a,b) };
+      }
+
+      const mem = readMem(sideKey, mode);
+      if (mem && typeof mem.c1 === "number" && typeof mem.c2 === "number") {
+        const a = decIdx(mem.c1, len);
+        const b = decIdx(mem.c2, len);
+        return { lo: Math.min(a,b), hi: Math.max(a,b) };
+      }
+
+      if (list.length) {
+        const [lo, hi] = list[0];
+        return { lo, hi };
+      }
+
+      return { lo: 0, hi: 0 };
+    }
+
+    function bestStepIndexForRange(list, lo, hi) {
+      if (!list.length) return 0;
+      let best = 0;
+      let bestScore = Infinity;
+      for (let i = 0; i < list.length; i++) {
+        const [a, b] = list[i];
+        if (a === lo && b === hi) return i;
+        const score = Math.abs(a - lo) + Math.abs(b - hi);
+        if (score < bestScore) { bestScore = score; best = i; }
+      }
+      return best;
+    }
+
+    function rememberCurrentForSideMode(sideKey, mode) {
+      if (!lastState) return;
+      const segId = DEVICE.segments[sideKey]?.id;
+      const fxId  = DEVICE.segments[sideKey]?.fx;
+      const seg = getSegFromState(lastState, segId);
+      if (!seg || seg.fx !== fxId) return; // only remember Lightbar settings for Lightbar modes
+      const snap = snapshotForLightbar(seg);
+      if (!snap) return;
+      writeMem(sideKey, mode, snap);
+    }
+
+    function reflectModeUIForSelected() {
+      const mode = modeKeyForSide(selectedKey);
+      ui.btnTop.classList.toggle("sel", mode === "top");
+      ui.btnSide.classList.toggle("sel", mode === "side");
+    }
+
     function setSelected(key) {
+      // Before switching, remember the last-used state into the current mode of the previous side.
+      if (key !== selectedKey) {
+        rememberCurrentForSideMode(selectedKey, modeKeyForSide(selectedKey));
+      }
+
       selectedKey = key;
       localStorage.setItem(LS_KEY, key);
       ui.btnDaniel.classList.toggle("sel", key === "daniel");
       ui.btnGabi.classList.toggle("sel", key === "gabi");
-      ui.selName.textContent = DEVICE.segments[key].name;
-      ui.segMeta.textContent = `seg ${DEVICE.segments[key].id} • fx ${DEVICE.segments[key].fx}`;
+      reflectModeUIForSelected();
       renderFromState(lastState);
     }
 
@@ -419,26 +638,37 @@
       const seg = getSegFromState(state, selected().id);
       if (!seg) return;
 
-      ui.briSlider.value = seg.bri ?? 128;
-      ui.briVal.textContent = `bri ${seg.bri ?? "—"}`;
+      const now = Date.now();
+      const allowTuningFromState = now >= suppressTuningFromStateUntil;
+      const notActive = (el) => document.activeElement !== el;
 
-      ui.sxSlider.value = seg.sx ?? ui.sxSlider.value;
-      ui.ixSlider.value = seg.ix ?? ui.ixSlider.value;
-      ui.c3Slider.value = seg.c3 ?? ui.c3Slider.value;
+      // Brightness
+      if (allowTuningFromState && notActive(ui.briSlider) && typeof seg.bri === "number") {
+        ui.briSlider.value = seg.bri;
+      }
+      ui.briVal.textContent = briToPct(parseInt(ui.briSlider.value, 10));
+
+      // Advanced tuning (sx/ix/c3 + o2/o3)
+      if (allowTuningFromState && notActive(ui.sxSlider) && typeof seg.sx === "number") ui.sxSlider.value = seg.sx;
+      if (allowTuningFromState && notActive(ui.ixSlider) && typeof seg.ix === "number") ui.ixSlider.value = seg.ix;
+      if (allowTuningFromState && notActive(ui.c3Slider) && typeof seg.c3 === "number") ui.c3Slider.value = seg.c3;
+
       ui.sxVal.textContent = `sx ${ui.sxSlider.value}`;
       ui.ixVal.textContent = `ix ${ui.ixSlider.value}`;
       ui.c3Val.textContent = `c3 ${ui.c3Slider.value}`;
       ui.c12Val.textContent = `c1 ${seg.c1 ?? "—"} • c2 ${seg.c2 ?? "—"}`;
 
-      ui.o2Chk.checked = !!seg.o2;
-      ui.o3Chk.checked = !!seg.o3;
+      if (allowTuningFromState && notActive(ui.o2Chk)) ui.o2Chk.checked = !!seg.o2;
+      if (allowTuningFromState && notActive(ui.o3Chk)) ui.o3Chk.checked = !!seg.o3;
 
-      const desired = !!seg.o1;
-      const on = !!seg.on;
-      let label = "OFF";
-      if (on && desired) label = "ON";
-      else if (on && !desired) label = "OFF (anim)";
-      ui.lampState.textContent = label;
+      // Represent current power state using the ON/OFF buttons themselves.
+      // For Lightbar effects, "ON" means seg.on && o1 (virtual desired power).
+      // For other effects, "ON" means seg.on.
+      const s = selected();
+      const isLightbar = (seg.fx === s.fx);
+      const isOn = isLightbar ? (!!seg.on && !!seg.o1) : !!seg.on;
+      ui.btnOn.classList.toggle("sel", isOn);
+      ui.btnOff.classList.toggle("sel", !isOn);
     }
 
     async function pollOnce() {
@@ -465,6 +695,8 @@
       try { await fn(); }
       finally { busy = false; }
       await pollOnce();
+      // Keep per-mode memory updated for the selected side, based on the current selected mode.
+      rememberCurrentForSideMode(selectedKey, modeKeyForSide(selectedKey));
     }
 
     function currentTuning() {
@@ -477,6 +709,16 @@
       };
     }
 
+    function userAdjustingTuning() {
+      suppressTuningFromStateUntil = Date.now() + 1400;
+    }
+
+    async function applyTuningFromUI() {
+      const s = selected();
+      const t = currentTuning();
+      await postState({ id: s.id, ...t });
+    }
+
     function currentC12FromStateOrDefault() {
       const seg = getSegFromState(lastState, selected().id);
       if (seg && typeof seg.c1 === "number" && typeof seg.c2 === "number") return { c1: seg.c1, c2: seg.c2 };
@@ -485,32 +727,49 @@
 
     async function turnOn() {
       const s = selected();
-      const { c1, c2 } = currentC12FromStateOrDefault();
-      const t = currentTuning();
-      await postState({
-        id: s.id,
-        on: true,
-        fx: s.fx,
-        o1: true,
-        ...t,
-        c1, c2,
-      });
+      if (!lastState) await pollOnce(); // ensure we restore the latest per-segment state
+
+      const seg = getSegFromState(lastState, s.id);
+
+      // Restore last-used state:
+      // - Always turn the segment ON (seg.on=true)
+      // - Only use the Lightbar virtual power contract (o1=true) if the segment is currently on the Lightbar effect.
+      // - If the segment isn't set up yet (missing in state), initialize it to the expected Lightbar effect for this side.
+      if (!seg) {
+        const { c1, c2 } = currentC12FromStateOrDefault();
+        const t = currentTuning();
+        await postState({ id: s.id, on: true, fx: s.fx, o1: true, ...t, c1, c2 });
+        return;
+      }
+
+      if (seg.fx === s.fx) {
+        await postState({ id: s.id, on: true, o1: true });
+        return;
+      }
+
+      // Different effect active -> do not force Lightbar or its o1 semantics.
+      await postState({ id: s.id, on: true });
     }
 
     async function turnOff() {
       const s = selected();
-      const t = currentTuning();
-      await postState({
-        id: s.id,
-        on: true,
-        o1: false,
-        ...t,
-      });
+      if (!lastState) await pollOnce();
+
+      const seg = getSegFromState(lastState, s.id);
+
+      // If the segment is running the Lightbar effect, request OFF-with-animation via o1=false.
+      if (seg && seg.fx === s.fx) {
+        await postState({ id: s.id, on: true, o1: false });
+        return;
+      }
+
+      // Otherwise, do a normal segment OFF (does not use Lightbar's virtual power semantics).
+      await postState({ id: s.id, on: false });
     }
 
     async function setBrightnessAbs(bri) {
       const s = selected();
-      await postState({ id: s.id, bri: clamp(bri, 1, 255) });
+      await postState({ id: s.id, bri: clamp(bri, 0, 255) });
     }
 
     async function adjustBrightness(delta) {
@@ -530,31 +789,71 @@
       const c2 = encIdx(range[1], s.len);
       const t = currentTuning();
       await postState({ id: s.id, on: true, fx: s.fx, o1: true, ...t, c1, c2 });
-      ui.btnTop.classList.toggle("sel", mode === "top");
-      ui.btnSide.classList.toggle("sel", mode === "side");
+      setModeForSide(selectedKey, mode);
+      reflectModeUIForSelected();
     }
 
-    async function adjustSize(deltaFar) {
+    async function applyMode(mode) {
       const s = selected();
-      const seg = getSegFromState(lastState, s.id);
-      const c1u = seg?.c1 ?? 128;
-      const c2u = seg?.c2 ?? 128;
-      const a = decIdx(c1u, s.len);
-      const b = decIdx(c2u, s.len);
-      const lo = Math.min(a, b);
-      const hi = Math.max(a, b);
-      let gNear = Math.min(toG(lo, s.len, s.groundAtStart), toG(hi, s.len, s.groundAtStart));
-      let gFar  = Math.max(toG(lo, s.len, s.groundAtStart), toG(hi, s.len, s.groundAtStart));
+      if (!lastState) await pollOnce();
 
-      // Grow/shrink away from ground by adjusting gFar
-      gFar = clamp(gFar + deltaFar, gNear, s.len - 1);
+      // Remember what we were using in the previous mode for this side before switching.
+      const prevMode = modeKeyForSide(selectedKey);
+      rememberCurrentForSideMode(selectedKey, prevMode);
 
-      const newLo = fromG(gNear, s.len, s.groundAtStart);
-      const newHi = fromG(gFar,  s.len, s.groundAtStart);
-      const c1 = encIdx(Math.min(newLo, newHi), s.len);
-      const c2 = encIdx(Math.max(newLo, newHi), s.len);
-      const t = currentTuning();
-      await postState({ id: s.id, on: true, fx: s.fx, o1: true, ...t, c1, c2 });
+      // Switch to the target mode.
+      setModeForSide(selectedKey, mode);
+      reflectModeUIForSelected();
+
+      const mem = readMem(selectedKey, mode);
+      if (mem && typeof mem.c1 === "number" && typeof mem.c2 === "number") {
+        const t = currentTuning();
+        const payload = {
+          id: s.id,
+          on: true,
+          fx: s.fx,
+          o1: true,
+          ...t,
+          c1: mem.c1,
+          c2: mem.c2,
+        };
+        if (typeof mem.bri === "number") payload.bri = clamp(mem.bri, 1, 255);
+        if (Array.isArray(mem.col) && mem.col.length >= 3) payload.col = [[mem.col[0], mem.col[1], mem.col[2], mem.col[3] ?? 0]];
+        await postState(payload);
+        return;
+      }
+
+      // First time in this mode: fall back to the anchor defaults.
+      await setAnchors(mode);
+    }
+
+    async function adjustSize(deltaSteps) {
+      const s = selected();
+      if (!lastState) await pollOnce();
+
+      const mode = modeKeyForSide(selectedKey);
+      const list = STEP_LISTS?.[selectedKey]?.[mode] || [];
+      if (!list.length) return;
+
+      // Determine current range (segment-local), then move one step forward/backward with wrap-around.
+      const cur = currentRangeLocalForSideMode(selectedKey, mode);
+
+      let idx = readStepIndex(selectedKey, mode);
+      if (idx == null || idx < 0 || idx >= list.length) {
+        idx = bestStepIndexForRange(list, cur.lo, cur.hi);
+      } else {
+        const [a, b] = list[idx];
+        if (a !== cur.lo || b !== cur.hi) idx = bestStepIndexForRange(list, cur.lo, cur.hi);
+      }
+
+      const dir = deltaSteps >= 0 ? 1 : -1;
+      const next = (idx + dir + list.length) % list.length;
+      writeStepIndex(selectedKey, mode, next);
+
+      const [lo, hi] = list[next];
+      const c1 = encIdx(lo, s.len);
+      const c2 = encIdx(hi, s.len);
+      await postState({ id: s.id, on: true, fx: s.fx, o1: true, c1, c2 });
     }
 
     async function setColorRGB(rgbHex) {
@@ -567,13 +866,12 @@
       await postState({ id: s.id, col: [[r,g,b,0]] });
     }
 
-    async function setWarmCool(which) {
-      // tuned to "warm-ish" and "cool-ish" without requiring CCT channel
-      const warm = [255,160,0,0];
-      const cool = [170,215,255,0];
-      await postState({ id: selected().id, col: [which === "warm" ? warm : cool] });
-      ui.btnWarm.classList.toggle("sel", which === "warm");
-      ui.btnCool.classList.toggle("sel", which === "cool");
+    async function nudgeWarmCool(which) {
+      if (!lastState) await pollOnce();
+      const dir = (which === "warm") ? +1 : -1;
+      const col = stepWarmerColder(dir);
+      await postState({ id: selected().id, col: [col] });
+      // visual feedback: momentary highlight will be updated on next poll
     }
 
     // Bind UI
@@ -587,21 +885,22 @@
 
     ui.btnBriDown.addEventListener("click", () => safeAction(() => adjustBrightness(-15)));
     ui.btnBriUp.addEventListener("click", () => safeAction(() => adjustBrightness(+15)));
-    ui.briSlider.addEventListener("input", () => { ui.briVal.textContent = `bri ${ui.briSlider.value}`; });
+    ui.briSlider.addEventListener("input", () => { userAdjustingTuning(); ui.briVal.textContent = briToPct(parseInt(ui.briSlider.value, 10)); });
     ui.briSlider.addEventListener("change", () => safeAction(() => setBrightnessAbs(parseInt(ui.briSlider.value, 10))));
 
-    ui.btnMore.addEventListener("click", () => safeAction(() => adjustSize(+4)));
-    ui.btnLess.addEventListener("click", () => safeAction(() => adjustSize(-4)));
+    ui.btnMore.addEventListener("click", () => safeAction(() => adjustSize(+1)));
+    ui.btnLess.addEventListener("click", () => safeAction(() => adjustSize(-1)));
 
-    ui.btnTop.addEventListener("click", () => safeAction(() => setAnchors("top")));
-    ui.btnSide.addEventListener("click", () => safeAction(() => setAnchors("side")));
+    ui.btnTop.addEventListener("click", () => safeAction(() => applyMode("top")));
+    ui.btnSide.addEventListener("click", () => safeAction(() => applyMode("side")));
 
-    ui.btnWarm.addEventListener("click", () => safeAction(() => setWarmCool("warm")));
-    ui.btnCool.addEventListener("click", () => safeAction(() => setWarmCool("cool")));
+    ui.btnWarm.addEventListener("click", () => safeAction(() => nudgeWarmCool("warm")));
+    ui.btnCool.addEventListener("click", () => safeAction(() => nudgeWarmCool("cool")));
 
     ui.btnColorApply.addEventListener("click", () => safeAction(() => setColorRGB(ui.colorPick.value)));
 
     const updAdv = () => {
+      userAdjustingTuning();
       ui.sxVal.textContent = `sx ${ui.sxSlider.value}`;
       ui.ixVal.textContent = `ix ${ui.ixSlider.value}`;
       ui.c3Val.textContent = `c3 ${ui.c3Slider.value}`;
@@ -609,6 +908,11 @@
     ui.sxSlider.addEventListener("input", updAdv);
     ui.ixSlider.addEventListener("input", updAdv);
     ui.c3Slider.addEventListener("input", updAdv);
+    ui.sxSlider.addEventListener("change", () => safeAction(applyTuningFromUI));
+    ui.ixSlider.addEventListener("change", () => safeAction(applyTuningFromUI));
+    ui.c3Slider.addEventListener("change", () => safeAction(applyTuningFromUI));
+    ui.o2Chk.addEventListener("change", () => { userAdjustingTuning(); safeAction(applyTuningFromUI); });
+    ui.o3Chk.addEventListener("change", () => { userAdjustingTuning(); safeAction(applyTuningFromUI); });
 
     // Start
     setSelected(selectedKey in DEVICE.segments ? selectedKey : "daniel");

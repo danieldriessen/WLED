@@ -184,6 +184,30 @@ This fork also includes a mobile-first remote page served directly from the devi
 
 It provides a Daniel/Gabriela selector and sends the correct per-segment `/json/state` commands (including OFF-with-animation via `o1=false`).
 
+### Updating `/remote-control` without reflashing (A)
+
+This fork supports updating the `/remote-control` page **without** reflashing firmware by using WLED’s filesystem editor:
+
+- The route handler for `/remote-control` will first try to serve a file from the device filesystem at:
+  - **`/remote-control.htm`** (or **`/remote-control.htm.gz`**)
+- If that file does not exist, it falls back to the built-in (compiled-in) `remote-control` page.
+
+Practical workflow:
+
+- **1) Ensure settings are unlocked (if you use a PIN)**:
+  - In WLED UI: `Config → Security & Updates` and unlock settings if needed.
+- **2) Open the filesystem editor**:
+  - `http://<wled-ip>/edit`
+- **3) Upload your updated page**:
+  - Upload the file **named exactly** `remote-control.htm` to the filesystem root (so it becomes `/remote-control.htm`).
+- **4) Reload**:
+  - Open `http://<wled-ip>/remote-control` and it should now serve your uploaded file.
+
+Notes:
+
+- If you upload a gzipped page as `remote-control.htm.gz`, WLED will serve it as well.
+- To revert to the built-in page, delete `/remote-control.htm` (and `/remote-control.htm.gz`) in `/edit`.
+
 ### iOS “Not Secure” note (home screen web app)
 
 If you add `http://.../remote-control` to the iOS home screen, iOS may still warn that it is not HTTPS.
@@ -209,15 +233,28 @@ If you use a local/self-signed CA, iOS will only stop warning after you install 
 - **Daniel / Gabriela selector**: chooses which segment is being controlled:
   - Daniel = `seg.id = 0` and uses `fx = 219` (`Lightbar Right`)
   - Gabriela = `seg.id = 1` and uses `fx = 218` (`Lightbar Links`)
-- **ON**: sends `"on": true` + `"o1": true` (desired power ON) and ensures correct `fx`
-- **OFF**: sends `"on": true` + `"o1": false` (OFF-with-animation; effect later turns `seg.on=false`)
+- **ON**: restores last-used state for that segment:
+  - If the segment is on the Lightbar effect for that side, sends `"on": true` + `"o1": true`.
+  - If the segment is on a different effect, sends only `"on": true` (no effect override).
+- **OFF**:
+  - If the segment is on the Lightbar effect, sends `"on": true` + `"o1": false` (OFF-with-animation; effect later turns `seg.on=false`)
+  - Otherwise sends `"on": false` (normal WLED OFF)
+- **ON/OFF indication in the remote UI**: the ON and OFF buttons highlight the current state for the selected side (no separate status row).
 - **Brightness +/- and slider**: updates `seg.bri`
-- **More LEDs / Less LEDs**: grows/shrinks the window **away from ground** (by nudging the window’s far bound)
+- **More LEDs / Less LEDs**: steps through a **fixed ordered list of inclusive LED ranges** per bedside side and per mode (Top/Side).
+  - **More LEDs** = next step; **Less LEDs** = previous step
+  - The list is **cyclic** (wrap-around): past max → min, past min → max
+  - This matches the “canonical step list” spec (two-phase expansion) you provided.
 - **Top / Side**:
   - Applies the per-side anchor windows above
   - If **Tight mode** is enabled (Advanced), uses the `min` window; otherwise uses `max`
-- **Warm / Cool**: sets the segment’s primary color to a warm-ish or cool-ish RGB value (keeps the effect)
+  - Per bedside side, the remote also remembers **last-used** window (`c1/c2`), brightness, and color **separately for Top and Side**:
+    - When you switch Top↔Side, it restores the last-used state for the target mode.
+    - This memory is stored in the browser’s `localStorage` (per phone/browser), not on the WLED device.
+- **Warmer / Colder**: nudges the segment’s primary color step-by-step towards a warmer or colder reference white (keeps the effect).
+- **Color picker “Apply”**: applies only the selected RGB color to the segment’s primary color (does not change brightness/window/effect).
 - **Advanced**:
   - `sx`, `ix`, `c3`, `o2`, `o3`, and Tight mode
+  - Changes are applied to the selected segment via `/json/state` (sliders apply on release; checkboxes apply immediately).
 
 

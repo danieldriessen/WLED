@@ -616,6 +616,9 @@ void initServer()
   });
 
   server.on(_remote_control, HTTP_GET, [](AsyncWebServerRequest *request) {
+    // Allow overriding the built-in remote UI without reflashing by uploading
+    // a filesystem file (via /edit) at "/remote-control.htm" (or ".gz").
+    if (handleFileRead(request, F("/remote-control.htm"))) return;
     handleStaticContent(request, FPSTR(_remote_control), 200, FPSTR(CONTENT_TYPE_HTML), PAGE_remote_control, PAGE_remote_control_length);
   });
 
