@@ -884,8 +884,13 @@
     function schedulePersistToBootPreset() {
       if (!persistEnabled()) return;
       if (persistTimer) clearTimeout(persistTimer);
-      persistTimer = setTimeout(() => {
-        safeAction(persistToBootPresetNow);
+      persistTimer = setTimeout(async () => {
+        // Do NOT call safeAction() here (that would re-schedule persist and loop).
+        try {
+          // If user is currently changing something, postpone.
+          if (busy) { schedulePersistToBootPreset(); return; }
+          await persistToBootPresetNow();
+        } catch {}
       }, 1500);
     }
 
