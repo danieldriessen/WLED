@@ -239,7 +239,7 @@ If you use a local/self-signed CA, iOS will only stop warning after you install 
 - **OFF**:
   - If the segment is on the Lightbar effect, sends `"on": true` + `"o1": false` (OFF-with-animation; effect later turns `seg.on=false`)
   - Otherwise sends `"on": false` (normal WLED OFF)
-- **ON/OFF indication in the remote UI**: a status bar at the top of the control card shows Daniel + Gabriela state (ON / OFF / OFF (anim)).
+- **ON/OFF indication in the remote UI**: under the Daniel/Gabriela bedside selector, a status bar shows both sides’ state (ON / OFF / OFF (anim)).
 - **Brightness +/- and slider**: updates `seg.bri`
 - **More LEDs / Less LEDs**: steps through a **fixed ordered list of inclusive LED ranges** per bedside side and per mode (Top/Side).
   - **More LEDs** = next step; **Less LEDs** = previous step
